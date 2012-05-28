@@ -16,11 +16,13 @@
  */
 package org.exoplatform.services.jcr.impl.core.query;
 
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.util.ReaderUtil;
 import org.exoplatform.commons.utils.ClassLoading;
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.SecurityHelper;
@@ -482,10 +484,10 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
          try
          {
             reader = ((SearchIndex)handler).getIndexReader();
-            final Collection<?> fields = reader.getFieldNames(IndexReader.FieldOption.ALL);
-            for (final Object field : fields)
+
+            for (FieldInfo fieldInfo : ReaderUtil.getMergedFieldInfos(reader))
             {
-               fildsSet.add((String)field);
+               fildsSet.add(fieldInfo.name);
             }
          }
          catch (IOException e)
@@ -710,7 +712,7 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
       {
          indexRecovery.close();
       }
-         
+
       unregisterRemoteCommands();
 
       if (LOG.isDebugEnabled())
@@ -1545,7 +1547,7 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
       });
 
    }
-   
+
    /**
     * Unregister remote commands.
     */
@@ -1557,7 +1559,7 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
          rpcService.unregisterCommand(resume);
          rpcService.unregisterCommand(requestForResponsibleForResuming);
          rpcService.unregisterCommand(changeIndexState);
-         
+
          rpcService.unregisterTopologyChangeListener(this);
       }
    }

@@ -67,7 +67,7 @@ class ReadOnlyIndexReader extends RefCountingIndexReader
       this.deleted = deleted;
       this.deletedDocsVersion = deletedDocsVersion;
       // acquire underlying reader
-      reader.acquire();
+      reader.incRef();
    }
 
    /**

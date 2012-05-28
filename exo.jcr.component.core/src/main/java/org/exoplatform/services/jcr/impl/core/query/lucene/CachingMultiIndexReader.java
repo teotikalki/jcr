@@ -21,10 +21,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermDocs;
+import org.apache.lucene.util.ReaderUtil;
 
 /**
  * Extends a <code>MultiReader</code> with support for cached <code>TermDocs</code>
@@ -170,6 +172,20 @@ public final class CachingMultiIndexReader
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public FieldInfos getFieldInfos()
+    {
+       FieldInfos fieldInfos = new FieldInfos();
+       for (ReadOnlyIndexReader subReader : subReaders)
+       {
+          fieldInfos.add(ReaderUtil.getMergedFieldInfos(subReader));
+       }
+       return fieldInfos;
+    }
+
     //-------------------------< MultiIndexReader >-----------------------------
 
     /**
@@ -222,7 +238,7 @@ public final class CachingMultiIndexReader
      * @param n document number.
      * @return the reader index.
      */
-    private int readerIndex(int n) {
+    protected int readerIndex(int n) {
         int lo = 0;                                      // search starts array
         int hi = subReaders.length - 1;                  // for first element less
 
@@ -271,4 +287,5 @@ public final class CachingMultiIndexReader
             this.offset = offset;
         }
     }
+
 }

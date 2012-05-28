@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.tokenattributes.TermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Fieldable;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
@@ -36,6 +37,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Similarity;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.ReaderUtil;
 import org.exoplatform.commons.utils.ClassLoading;
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.PrivilegedSystemHelper;
@@ -2282,6 +2284,20 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
          return id.getDocumentNumbers(this, docNumbers);
       }
 
+      /**
+       * {@inheritDoc}
+       */
+      @Override
+      public FieldInfos getFieldInfos()
+      {
+         FieldInfos fieldInfos = new FieldInfos();
+         for (CachingMultiIndexReader subReader : subReaders)
+         {
+            fieldInfos.add(ReaderUtil.getMergedFieldInfos(subReader));
+         }
+         return fieldInfos;
+      }
+
       // -------------------------< MultiIndexReader
       // >-------------------------
 
@@ -2317,7 +2333,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
        *            document number.
        * @return the reader index.
        */
-      private int readerIndex(int n)
+      protected int readerIndex(int n)
       {
          int lo = 0; // search starts array
          int hi = subReaders.length - 1; // for first element less

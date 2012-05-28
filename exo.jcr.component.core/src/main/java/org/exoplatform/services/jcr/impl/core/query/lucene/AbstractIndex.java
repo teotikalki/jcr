@@ -274,7 +274,7 @@ abstract class AbstractIndex
          if (readOnlyReader.getDeletedDocsVersion() == modCount)
          {
             // reader up-to-date
-            readOnlyReader.acquire();
+            readOnlyReader.incRef();
             return readOnlyReader;
          }
          else
@@ -285,7 +285,7 @@ abstract class AbstractIndex
                // not in use, except by this index
                // update the reader
                readOnlyReader.updateDeletedDocs(modifiableReader);
-               readOnlyReader.acquire();
+               readOnlyReader.incRef();
                return readOnlyReader;
             }
             else
@@ -315,7 +315,7 @@ abstract class AbstractIndex
          sharedReader = new SharedIndexReader(cr);
       }
       readOnlyReader = new ReadOnlyIndexReader(sharedReader, deleted, modCount);
-      readOnlyReader.acquire();
+      readOnlyReader.incRef();
       return readOnlyReader;
    }
 

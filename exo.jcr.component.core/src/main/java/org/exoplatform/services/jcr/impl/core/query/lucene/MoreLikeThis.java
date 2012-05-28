@@ -21,6 +21,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermFreqVector;
@@ -31,6 +32,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Similarity;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.ReaderUtil;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
@@ -43,6 +45,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -530,7 +533,7 @@ public final class MoreLikeThis
       if (fieldNames == null)
       {
          // gather list of valid fields from lucene
-         Collection<String> fields = ir.getFieldNames(IndexReader.FieldOption.INDEXED);
+         Collection<String> fields = ReaderUtil.getIndexedFields(ir);
          fieldNames = fields.toArray(new String[fields.size()]);
       }
 
@@ -547,7 +550,7 @@ public final class MoreLikeThis
       if (fieldNames == null)
       {
          // gather list of valid fields from lucene
-         Collection<String> fields = ir.getFieldNames(IndexReader.FieldOption.INDEXED);
+         Collection<String> fields = ReaderUtil.getIndexedFields(ir);
          fieldNames = fields.toArray(new String[fields.size()]);
       }
 

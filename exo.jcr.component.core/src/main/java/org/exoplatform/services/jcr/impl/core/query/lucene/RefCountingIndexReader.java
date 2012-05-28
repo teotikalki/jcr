@@ -37,21 +37,21 @@ public class RefCountingIndexReader
         super(in);
     }
 
-    /**
-     * Increments the reference count on this index reader. The reference count
-     * is decremented on {@link #release()}.
-     */
-    synchronized final void acquire() {
-        refCount++;
-    }
-
-    /**
-     * @return the current reference count value.
-     */
-    @Override
-   public synchronized int getRefCount() {
-        return refCount;
-    }
+//    /**
+//     * Increments the reference count on this index reader. The reference count
+//     * is decremented on {@link #release()}.
+//     */
+//    synchronized final void acquire() {
+//        refCount++;
+//    }
+//
+//    /**
+//     * @return the current reference count value.
+//     */
+//    @Override
+//   public synchronized int getRefCount() {
+//        return refCount;
+//    }
 
     //-----------------------< ReleaseableIndexReader >--------------------------
 
@@ -59,9 +59,10 @@ public class RefCountingIndexReader
      * {@inheritDoc}
      */
     public synchronized final void release() throws IOException {
-        if (--refCount == 0) {
-            close();
-        }
+       decRef();
+//        if (--refCount == 0) {
+//            close();
+//        }
     }
 
     //-----------------------< FilterIndexReader >--------------------------
