@@ -91,7 +91,7 @@ public class IndexMigration
       }
       finally
       {
-         reader.release();
+         reader.decRef();
          index.releaseWriterAndReaders();
       }
 

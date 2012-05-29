@@ -2220,7 +2220,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
                   }
                   finally
                   {
-                     reader.release();
+                     reader.decRef();
                   }
                }
                catch (Exception e)
@@ -2318,7 +2318,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
       {
          for (int i = 0; i < subReaders.length; i++)
          {
-            subReaders[i].release();
+            subReaders[i].decRef();
          }
       }
 

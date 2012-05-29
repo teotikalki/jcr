@@ -210,7 +210,7 @@ class ConsistencyCheck
       }
       finally
       {
-         reader.release();
+         reader.decRef();
       }
 
       // create multiple entries errors
@@ -258,7 +258,7 @@ class ConsistencyCheck
       }
       finally
       {
-         reader.release();
+         reader.decRef();
       }
    }
 

@@ -25,7 +25,7 @@ import org.apache.lucene.index.IndexReader;
  * <code>MultiIndexReader</code> exposes methods to get access to the contained
  * {@link IndexReader}s of this <code>MultiIndexReader</code>.
  */
-public interface MultiIndexReader extends ReleaseableIndexReader {
+public interface MultiIndexReader extends ReferenceableIndexReader {
 
     /**
      * @return the <code>IndexReader</code>s that are contained in this

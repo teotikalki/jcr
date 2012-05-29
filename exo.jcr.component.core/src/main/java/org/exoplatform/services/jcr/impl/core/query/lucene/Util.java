@@ -116,7 +116,7 @@ public class Util
    /**
     * Depending on the type of the <code>reader</code> this method either
     * closes or releases the reader. The reader is released if it implements
-    * {@link ReleaseableIndexReader}.
+    * {@link ReferenceableIndexReader}.
     *
     * @param reader the index reader to close or release.
     * @throws IOException if an error occurs while closing or releasing the
@@ -124,9 +124,9 @@ public class Util
     */
    public static void closeOrRelease(final IndexReader reader) throws IOException
    {
-      if (reader instanceof ReleaseableIndexReader)
+      if (reader instanceof ReferenceableIndexReader)
       {
-         ((ReleaseableIndexReader)reader).release();
+         reader.decRef();
       }
       else
       {

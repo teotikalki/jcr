@@ -292,7 +292,7 @@ abstract class AbstractIndex
             {
                // cannot update reader, it is still in use
                // need to create a new instance
-               readOnlyReader.release();
+               readOnlyReader.decRef();
                readOnlyReader = null;
             }
          }
@@ -455,7 +455,7 @@ abstract class AbstractIndex
       {
          try
          {
-            readOnlyReader.release();
+            readOnlyReader.decRef();
          }
          catch (IOException e)
          {
@@ -467,7 +467,7 @@ abstract class AbstractIndex
       {
          try
          {
-            sharedReader.release();
+            sharedReader.decRef();
          }
          catch (IOException e)
          {
@@ -502,13 +502,13 @@ abstract class AbstractIndex
       // also close the read-only reader
       if (readOnlyReader != null)
       {
-         readOnlyReader.release();
+         readOnlyReader.decRef();
          readOnlyReader = null;
       }
       // invalidate shared reader
       if (sharedReader != null)
       {
-         sharedReader.release();
+         sharedReader.decRef();
          sharedReader = null;
       }
    }
