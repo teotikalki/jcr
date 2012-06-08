@@ -173,7 +173,7 @@ class PersistentIndex extends AbstractIndex
     */
    int getNumDocuments() throws IOException
    {
-      return getIndexReader().numDocs();
+      return getReadOnlyIndexReader().numDocs();
    }
 
    /**

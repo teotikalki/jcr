@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.BitSet;
 
 /**
  * Implements common functionality for a lucene index.
@@ -62,9 +61,6 @@ abstract class AbstractIndex
 
    /** The currently set IndexWriter or <code>null</code> if none is set */
    private IndexWriter indexWriter;
-
-   /** The currently set IndexReader or <code>null</code> if none is set */
-   private CommittableIndexReader indexReader;
 
    /** The underlying Directory where the index is stored */
    private Directory directory;
@@ -210,6 +206,18 @@ abstract class AbstractIndex
    }
 
    /**
+    * Defines if index in Read-Write mode according to
+    * I/O mode handler or in case of some indexes
+    * (for example {@link VolatileIndex}, as it is always in R/W mode)
+    * can be overridden to provide yet another logic.
+    * 
+    */
+   protected boolean isReadWriteMode()
+   {
+      return (modeHandler != null) && modeHandler.getMode() == IndexerIoMode.READ_WRITE;
+   }
+
+   /**
     * Removes the document from this index. This call will not invalidate
     * the shared reader. If a subclass whishes to do so, it should overwrite
     * this method and call {@link #invalidateSharedReader()}.
@@ -220,57 +228,47 @@ abstract class AbstractIndex
     */
    int removeDocument(final Term idTerm) throws IOException
    {
-      TermDocs termDocs = getReadOnlyIndexReader().termDocs(idTerm);
-      // process termDocs
       int n = 0;
-      if (termDocs == null)
+      ReadOnlyIndexReader readOnlyIndexReader = null;
+      TermDocs termDocs = null;
+
+      try
       {
-         return 0;
+         readOnlyIndexReader = getReadOnlyIndexReader();
+         termDocs = readOnlyIndexReader.termDocs(idTerm);
+
+         if (termDocs == null)
+         {
+            return 0;
+         }
+
+         while (termDocs.next())
+         {
+            readOnlyIndexReader.deleteDocumentTransiently(termDocs.doc());
+            n++;
+         }
+
+         if (isReadWriteMode())
+         {
+            getIndexWriter().deleteDocuments(idTerm);
+         }
       }
-      while (termDocs.next())
+      finally
       {
-         getReadOnlyIndexReader().markDeletedDocument(termDocs.doc());
-         n++;
+         if (termDocs != null)
+         {
+            termDocs.close();
+         }
+
+         if (readOnlyIndexReader != null)
+         {
+            readOnlyIndexReader.decRef();
+         }
       }
-      if (modeHandler != null && modeHandler.getMode() == IndexerIoMode.READ_WRITE)
-      {
-         getIndexWriter().deleteDocuments(idTerm);
-      }
+
       return n;
-
-      //      return getIndexReader().deleteDocuments(idTerm);
    }
 
-   /**
-    * Returns an <code>IndexReader</code> on this index. This index reader
-    * may be used to delete documents.
-    *
-    * @return an <code>IndexReader</code> on this index.
-    * @throws IOException if the reader cannot be obtained.
-    */
-   protected synchronized CommittableIndexReader getIndexReader() throws IOException
-   {
-      if (indexWriter != null)
-      {
-         indexWriter.close();
-         log.debug("closing IndexWriter.");
-         indexWriter = null;
-      }
-
-      if (indexReader == null || !indexReader.isCurrent())
-      {
-         IndexReader reader = IndexReader.open(getDirectory(), null, false, termInfosIndexDivisor);
-         // if modeHandler != null and mode==READ_ONLY, then reader should be with transient deleteions.
-         // This is used to transiently update reader in clustered environment when some documents have 
-         // been deleted. If index reader not null and already contains some transient deletions, but it
-         // is no more current, it will be re-created loosing deletions. They will already be applied by
-         // coordinator node in the cluster. And there is no need to inject them into the new reader  
-
-         indexReader =
-            new CommittableIndexReader(reader, modeHandler != null && modeHandler.getMode() == IndexerIoMode.READ_ONLY);
-      }
-      return indexReader;
-   }
 
    /**
     * Returns a read-only index reader, that can be used concurrently with
@@ -285,55 +283,28 @@ abstract class AbstractIndex
     */
    synchronized ReadOnlyIndexReader getReadOnlyIndexReader(final boolean initCache) throws IOException
    {
-      // get current modifiable index reader
-      CommittableIndexReader modifiableReader = getIndexReader();
-      long modCount = modifiableReader.getModificationCount();
       if (readOnlyReader != null)
       {
-         if (readOnlyReader.getDeletedDocsVersion() == modCount)
-         {
-            // reader up-to-date
-            readOnlyReader.incRef();
-            return readOnlyReader;
-         }
-         else
-         {
-            // reader outdated
-            if (readOnlyReader.getRefCount() == 1)
-            {
-               // not in use, except by this index
-               // update the reader
-               readOnlyReader.updateDeletedDocs(modifiableReader);
-               readOnlyReader.incRef();
-               return readOnlyReader;
-            }
-            else
-            {
-               // cannot update reader, it is still in use
-               // need to create a new instance
-               readOnlyReader.decRef();
-               readOnlyReader = null;
-            }
-         }
+         readOnlyReader.incRef();
+         return readOnlyReader;
       }
-      // if we get here there is no up-to-date read-only reader
-      // capture snapshot of deleted documents
-      BitSet deleted = new BitSet(modifiableReader.maxDoc());
-      for (int i = 0; i < modifiableReader.maxDoc(); i++)
+
+      // create new shared reader
+      invalidateSharedReader();
+      IndexReader reader;
+      if (isReadWriteMode())
       {
-         if (modifiableReader.isDeleted(i))
-         {
-            deleted.set(i);
-         }
+         reader = IndexReader.open(getIndexWriter(), true);
       }
-      if (sharedReader == null)
+      else
       {
-         // create new shared reader
-         IndexReader reader = IndexReader.open(getDirectory(), null, true, termInfosIndexDivisor);
-         CachingIndexReader cr = new CachingIndexReader(reader, cache, initCache);
-         sharedReader = new SharedIndexReader(cr);
+         reader = IndexReader.open(getDirectory(), termInfosIndexDivisor);
       }
-      readOnlyReader = new ReadOnlyIndexReader(sharedReader, deleted, modCount);
+
+      CachingIndexReader cr = new CachingIndexReader(reader, cache, initCache);
+      sharedReader = new SharedIndexReader(cr);
+
+      readOnlyReader = new ReadOnlyIndexReader(sharedReader);
       readOnlyReader.incRef();
       return readOnlyReader;
    }
@@ -359,12 +330,6 @@ abstract class AbstractIndex
     */
    protected synchronized IndexWriter getIndexWriter() throws IOException
    {
-      if (indexReader != null)
-      {
-         indexReader.close();
-         log.debug("closing IndexReader.");
-         indexReader = null;
-      }
       if (indexWriter == null)
       {
          IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_30, analyzer);
@@ -402,11 +367,6 @@ abstract class AbstractIndex
     */
    protected synchronized void commit(final boolean optimize) throws IOException
    {
-      if (indexReader != null)
-      {
-         log.debug("committing IndexReader.");
-         indexReader.flush();
-      }
       if (indexWriter != null)
       {
          log.debug("committing IndexWriter.");
@@ -457,18 +417,6 @@ abstract class AbstractIndex
             log.warn("Exception closing index writer: " + e.toString());
          }
          indexWriter = null;
-      }
-      if (indexReader != null)
-      {
-         try
-         {
-            indexReader.close();
-         }
-         catch (IOException e)
-         {
-            log.warn("Exception closing index reader: " + e.toString());
-         }
-         indexReader = null;
       }
       if (readOnlyReader != null)
       {
