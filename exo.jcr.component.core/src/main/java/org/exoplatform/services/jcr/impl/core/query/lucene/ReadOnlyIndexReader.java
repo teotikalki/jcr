@@ -46,6 +46,12 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
    private final BitSet deleted;
 
    /**
+    * The version of the index reader from where the deleted BitSet was
+    * obtained from.
+    */
+   private long deletedDocsVersion;
+
+   /**
     * Creates a new index reader based on <code>reader</code> at
     * <code>modificationTick</code>.
     *
@@ -55,24 +61,22 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
     * @param deletedDocsVersion the version of the index reader from where the
     *                           deleted BitSet was obtained from.
     */
-   public ReadOnlyIndexReader(SharedIndexReader reader, BitSet deleted)
+   public ReadOnlyIndexReader(SharedIndexReader reader, BitSet deleted, long deletedDocsVersion)
    {
       super(reader);
       this.reader = reader;
       this.deleted = deleted;
+      this.deletedDocsVersion = deletedDocsVersion;
       // acquire underlying reader
       reader.incRef();
    }
 
    /**
-    * Creates a new index reader based on <code>reader</code> at
-    * <code>modificationTick</code>.
-    *
-    * @param reader             the underlying <code>IndexReader</code>.
+    * @return version of the deleted docs.
     */
-   public ReadOnlyIndexReader(SharedIndexReader reader)
+   long getDeletedDocsVersion()
    {
-      this(reader, new BitSet());
+      return deletedDocsVersion;
    }
 
    /**
@@ -84,6 +88,30 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
    long getCreationTick()
    {
       return reader.getCreationTick();
+   }
+
+   /**
+    * Updates the deleted documents in this index reader. When this method
+    * returns this index reader will have the same documents marked as deleted
+    * as the passed <code>reader</code>.
+    * <p/>
+    * This method is not thread-safe! Make sure no other thread is concurrently
+    * using this reader at the same time.
+    *
+    * @param reader the reader from where to obtain the deleted documents
+    *               info.
+    */
+   void updateDeletedDocs(CommittableIndexReader reader)
+   {
+      int maxDoc = reader.maxDoc();
+      for (int i = 0; i < maxDoc; i++)
+      {
+         if (reader.isDeleted(i))
+         {
+            deleted.set(i);
+         }
+      }
+      deletedDocsVersion = reader.getModificationCount();
    }
 
    /**
@@ -140,16 +168,6 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
    public int numDocs()
    {
       return maxDoc() - deleted.cardinality();
-   }
-
-   /**
-    * Mark document as deleted one.
-    * 
-    * @param doc document index.
-    */
-   public void deleteDocumentTransiently(int doc)
-   {
-      deleted.set(doc);
    }
 
    /**
@@ -226,6 +244,11 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
       return new FilteredTermPositions(super.termPositions());
    }
 
+   public void markDeletedDocument(int doc)
+   {
+      // TODO Auto-generated method stub
+      deleted.set(doc);
+   }
 
    //----------------------< FilteredTermDocs >--------------------------------
 

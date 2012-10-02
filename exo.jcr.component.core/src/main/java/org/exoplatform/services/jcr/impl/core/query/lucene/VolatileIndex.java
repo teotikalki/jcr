@@ -113,7 +113,7 @@ class VolatileIndex extends AbstractIndex
       else
       {
          // remove document from index
-         num = super.removeDocument(idTerm);
+         num = super.getIndexReader().deleteDocuments(idTerm);
       }
       numDocs -= num;
       return num;
@@ -136,10 +136,10 @@ class VolatileIndex extends AbstractIndex
     * @throws IOException if an error occurs building a reader.
     */
    @Override
-   protected synchronized ReadOnlyIndexReader getReadOnlyIndexReader() throws IOException
+   protected synchronized CommittableIndexReader getIndexReader() throws IOException
    {
       commitPending();
-      return super.getReadOnlyIndexReader();
+      return super.getIndexReader();
    }
 
    /**
@@ -153,15 +153,6 @@ class VolatileIndex extends AbstractIndex
    {
       commitPending();
       super.commit(optimize);
-   }
-
-   /**
-    * Overrides superclass logic, as {@link VolatileIndex}
-    * should be always in R/W mode.
-    */
-   protected boolean isReadWriteMode()
-   {
-      return true;
    }
 
    /**
