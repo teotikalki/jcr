@@ -23,7 +23,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LogMergePolicy;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermDocs;
 import org.apache.lucene.search.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Version;
@@ -220,25 +219,7 @@ abstract class AbstractIndex
     */
    int removeDocument(final Term idTerm) throws IOException
    {
-      TermDocs termDocs = getReadOnlyIndexReader().termDocs(idTerm);
-      // process termDocs
-      int n = 0;
-      if (termDocs == null)
-      {
-         return 0;
-      }
-      while (termDocs.next())
-      {
-         getReadOnlyIndexReader().markDeletedDocument(termDocs.doc());
-         n++;
-      }
-      if (modeHandler != null && modeHandler.getMode() == IndexerIoMode.READ_WRITE)
-      {
-         getIndexWriter().deleteDocuments(idTerm);
-      }
-      return n;
-
-      //      return getIndexReader().deleteDocuments(idTerm);
+      return getIndexReader().deleteDocuments(idTerm);
    }
 
    /**

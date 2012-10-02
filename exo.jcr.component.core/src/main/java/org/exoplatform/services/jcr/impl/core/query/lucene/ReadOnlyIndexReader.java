@@ -17,6 +17,7 @@
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
 import org.apache.lucene.index.FilterIndexReader;
+import org.apache.lucene.index.FilterIndexReader.FilterTermDocs;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermDocs;
 import org.apache.lucene.index.TermPositions;
@@ -244,12 +245,6 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
       return new FilteredTermPositions(super.termPositions());
    }
 
-   public void markDeletedDocument(int doc)
-   {
-      // TODO Auto-generated method stub
-      deleted.set(doc);
-   }
-
    //----------------------< FilteredTermDocs >--------------------------------
 
    /**
@@ -360,5 +355,4 @@ class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableInde
       }
 
    }
-
 }
