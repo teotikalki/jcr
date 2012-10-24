@@ -16,15 +16,14 @@
  */
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
-import java.io.IOException;
-
-
 import org.apache.lucene.index.FilterIndexReader;
 import org.apache.lucene.index.IndexReader;
 
+import java.io.IOException;
+
 /**
  * <code>JackrabbitIndexReader</code> wraps an index reader and
- * {@link ReleaseableIndexReader#release() releases} the underlying reader
+ * {@link ReferenceableIndexReader#release() releases} the underlying reader
  * when a client calls {@link #close()} on this reader. This allows reusing
  * of the underlying index reader instance.
  */
@@ -66,16 +65,17 @@ public final class JcrIndexReader
 
     //--------------------------< FilterIndexReader >---------------------------
 
-    /**
-     * Calls release on the underlying {@link MultiIndexReader} instead of
-     * closing it.
-     *
-     * @throws IOException if an error occurs while releaseing the underlying
-     *                     index reader.
-     */
-    protected void doClose() throws IOException {
-        reader.release();
-    }
+   /**
+    * Calls release on the underlying {@link MultiIndexReader} instead of
+    * closing it.
+    *
+    * @throws IOException if an error occurs while releaseing the underlying
+    *                     index reader.
+    */
+   protected void doClose() throws IOException
+   {
+      ((IndexReader)reader).decRef();
+   }
 
     //------------------------< HierarchyResolver >-----------------------------
 
@@ -107,13 +107,6 @@ public final class JcrIndexReader
      */
     public int getDocumentNumber(ForeignSegmentDocId docId) throws IOException {
         return reader.getDocumentNumber(docId);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public void release() throws IOException {
-        reader.release();
     }
     
     @Override

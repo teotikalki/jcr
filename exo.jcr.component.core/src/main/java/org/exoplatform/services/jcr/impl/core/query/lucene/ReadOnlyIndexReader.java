@@ -16,6 +16,7 @@
  */
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
+import org.apache.lucene.index.FilterIndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermDocs;
 import org.apache.lucene.index.TermPositions;
@@ -30,7 +31,7 @@ import java.util.Map;
  * <code>ReadOnlyIndexReader</code> will always show all documents that have
  * not been deleted at the time when the index reader is created.
  */
-class ReadOnlyIndexReader extends RefCountingIndexReader
+class ReadOnlyIndexReader extends FilterIndexReader implements ReferenceableIndexReader
 {
 
    /**
@@ -67,7 +68,7 @@ class ReadOnlyIndexReader extends RefCountingIndexReader
       this.deleted = deleted;
       this.deletedDocsVersion = deletedDocsVersion;
       // acquire underlying reader
-      reader.acquire();
+      reader.incRef();
    }
 
    /**

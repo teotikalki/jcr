@@ -98,9 +98,9 @@ public class LuceneQueryHits implements QueryHits
          scorer.advance(Integer.MAX_VALUE);
       }
 
-      if (releaseReaderOnClose && reader != null && reader instanceof ReleaseableIndexReader)
+      if (releaseReaderOnClose && reader != null && reader instanceof ReferenceableIndexReader)
       {
-         ((ReleaseableIndexReader)reader).release();
+         reader.decRef();
       }
    }
 

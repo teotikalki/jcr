@@ -31,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Similarity;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.ReaderUtil;
 import org.apache.lucene.util.Version;
 
 import java.io.File;
@@ -530,7 +531,7 @@ public final class MoreLikeThis
       if (fieldNames == null)
       {
          // gather list of valid fields from lucene
-         Collection<String> fields = ir.getFieldNames(IndexReader.FieldOption.INDEXED);
+         Collection<String> fields = ReaderUtil.getIndexedFields(ir);
          fieldNames = fields.toArray(new String[fields.size()]);
       }
 
@@ -547,7 +548,7 @@ public final class MoreLikeThis
       if (fieldNames == null)
       {
          // gather list of valid fields from lucene
-         Collection<String> fields = ir.getFieldNames(IndexReader.FieldOption.INDEXED);
+         Collection<String> fields = ReaderUtil.getIndexedFields(ir);
          fieldNames = fields.toArray(new String[fields.size()]);
       }
 

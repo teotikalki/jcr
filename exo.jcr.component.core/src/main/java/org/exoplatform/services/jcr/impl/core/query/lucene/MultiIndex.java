@@ -354,7 +354,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
       }
       finally
       {
-         reader.release();
+         reader.decRef();
       }
 
       synchronized (this.modeHandler)
@@ -443,7 +443,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
          }
          finally
          {
-            reader.release();
+            reader.decRef();
          }
       }
    }
@@ -788,7 +788,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
                            // safe release reader
                            if (lastIndexReader != null)
                            {
-                              lastIndexReader.release();
+                              lastIndexReader.decRef();
                            }
                            lastIndexReaderId = indexes.size() - 1;
                            try
@@ -838,7 +838,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
                // don't forget to release a reader anyway
                if (lastIndexReader != null)
                {
-                  lastIndexReader.release();
+                  lastIndexReader.decRef();
                }
                synchronized (updateMonitor)
                {
@@ -1120,7 +1120,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
                {
                   public Object run() throws Exception
                   {
-                     reader.release();
+                     reader.decRef();
                      return null;
                   }
                });
@@ -1253,7 +1253,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
          {
             time = System.currentTimeMillis();
          }
-         index.getReadOnlyIndexReader(true).release();
+         index.getReadOnlyIndexReader(true).decRef();
          if (LOG.isDebugEnabled())
          {
             time = System.currentTimeMillis() - time;
@@ -1368,7 +1368,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
             {
                if (multiReader != null)
                {
-                  multiReader.acquire();
+                  multiReader.incRef();
                   return multiReader;
                }
                // no reader available
@@ -1416,7 +1416,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
                   ReadOnlyIndexReader[] readers = readerList.toArray(new ReadOnlyIndexReader[readerList.size()]);
                   multiReader = new CachingMultiIndexReader(readers, cache);
                }
-               multiReader.acquire();
+               multiReader.incRef();
                return multiReader;
             }
          }
@@ -1702,7 +1702,7 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
       {
          try
          {
-            multiReader.release();
+            multiReader.decRef();
          }
          finally
          {

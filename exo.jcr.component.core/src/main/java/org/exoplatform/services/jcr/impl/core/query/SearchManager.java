@@ -16,11 +16,13 @@
  */
 package org.exoplatform.services.jcr.impl.core.query;
 
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.util.ReaderUtil;
 import org.exoplatform.commons.utils.ClassLoading;
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.SecurityHelper;
@@ -96,7 +98,6 @@ import java.security.PrivilegedExceptionAction;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -488,10 +489,10 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
          try
          {
             reader = ((SearchIndex)handler).getIndexReader();
-            final Collection<?> fields = reader.getFieldNames(IndexReader.FieldOption.ALL);
-            for (final Object field : fields)
+
+            for (FieldInfo fieldInfo : ReaderUtil.getMergedFieldInfos(reader))
             {
-               fildsSet.add((String)field);
+               fildsSet.add(fieldInfo.name);
             }
          }
          catch (IOException e)
@@ -658,7 +659,7 @@ public class SearchManager implements Startable, MandatoryItemsPersistenceListen
       {
          indexRecovery.close();
       }
-         
+
       unregisterRemoteCommands();
 
       if (LOG.isDebugEnabled())

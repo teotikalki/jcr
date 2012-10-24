@@ -16,16 +16,16 @@
  */
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
-import java.io.IOException;
-
-
 import org.apache.lucene.index.IndexReader;
+
+import java.io.IOException;
 
 /**
  * <code>MultiIndexReader</code> exposes methods to get access to the contained
  * {@link IndexReader}s of this <code>MultiIndexReader</code>.
  */
-public interface MultiIndexReader extends ReleaseableIndexReader {
+public interface MultiIndexReader extends ReferenceableIndexReader
+{
 
     /**
      * @return the <code>IndexReader</code>s that are contained in this

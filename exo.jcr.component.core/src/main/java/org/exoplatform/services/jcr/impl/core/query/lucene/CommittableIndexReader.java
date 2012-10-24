@@ -19,8 +19,6 @@ package org.exoplatform.services.jcr.impl.core.query.lucene;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FilterIndexReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.StaleReaderException;
-import org.apache.lucene.store.LockObtainFailedException;
 
 import java.io.IOException;
 import java.util.Set;
@@ -76,23 +74,23 @@ class CommittableIndexReader extends FilterIndexReader {
         modCount++;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void deleteDocument(int docNum) throws StaleReaderException, CorruptIndexException,
-       LockObtainFailedException, IOException {
-       // skip acquiring write lock
-       if (transientDeletions)
-       {
-           deletedDocs.add(docNum);
-           modCount++; // doDelete won't be executed, so incrementing modCount
-       }
-       else
-       {
-           super.deleteDocument(docNum);
-       }
-    }
+   //    /**
+   //     * {@inheritDoc}
+   //     */
+   //    @Override
+   //    public void deleteDocument(int docNum) throws StaleReaderException, CorruptIndexException,
+   //       LockObtainFailedException, IOException {
+   //       // skip acquiring write lock
+   //       if (transientDeletions)
+   //       {
+   //           deletedDocs.add(docNum);
+   //           modCount++; // doDelete won't be executed, so incrementing modCount
+   //       }
+   //       else
+   //       {
+   //           super.deleteDocument(docNum);
+   //       }
+   //    }
    
     @Override
     public boolean isDeleted(int n) {

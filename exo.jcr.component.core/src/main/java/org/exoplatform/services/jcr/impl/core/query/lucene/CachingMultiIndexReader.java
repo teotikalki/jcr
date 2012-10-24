@@ -16,15 +16,16 @@
  */
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermDocs;
+import org.apache.lucene.util.ReaderUtil;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Extends a <code>MultiReader</code> with support for cached <code>TermDocs</code>
@@ -54,33 +55,29 @@ public final class CachingMultiIndexReader
      */
     private int[] starts;
 
-    /**
-     * Reference count. Every time close is called refCount is decremented. If
-     * refCount drops to zero the underlying readers are closed as well.
-     */
-    private int refCount = 1;
-
-    /**
-     * Creates a new <code>CachingMultiIndexReader</code> based on sub readers.
-     *
-     * @param subReaders the sub readers.
-     * @param cache the document number cache.
-     */
-    public CachingMultiIndexReader(ReadOnlyIndexReader[] subReaders,
-                                   DocNumberCache cache) {
-        super(subReaders);
-        this.cache = cache;
-        this.subReaders = subReaders;
-        starts = new int[subReaders.length + 1];
-        int maxDoc = 0;
-        for (int i = 0; i < subReaders.length; i++) {
-            starts[i] = maxDoc;
-            maxDoc += subReaders[i].maxDoc();
-            OffsetReader offsetReader = new OffsetReader(subReaders[i], starts[i]);
-            readersByCreationTick.put(new Long(subReaders[i].getCreationTick()), offsetReader);
-        }
-        starts[subReaders.length] = maxDoc;
-    }
+   /**
+    * Creates a new <code>CachingMultiIndexReader</code> based on sub readers.
+    *
+    * @param subReaders the sub readers.
+    * @param cache the document number cache.
+    */
+   public CachingMultiIndexReader(ReadOnlyIndexReader[] subReaders, DocNumberCache cache)
+   {
+      super(subReaders);
+      this.cache = cache;
+      this.subReaders = subReaders;
+      starts = new int[subReaders.length + 1];
+      int maxDoc = 0;
+      for (int i = 0; i < subReaders.length; i++)
+      {
+         starts[i] = maxDoc;
+         maxDoc += subReaders[i].maxDoc();
+         OffsetReader offsetReader = new OffsetReader(subReaders[i], starts[i]);
+         readersByCreationTick.put(new Long(subReaders[i].getCreationTick()), offsetReader);
+      }
+      starts[subReaders.length] = maxDoc;
+      incRef();
+   }
 
     /**
      * {@inheritDoc}
@@ -144,31 +141,27 @@ public final class CachingMultiIndexReader
         return super.termDocs(term);
     }
 
-    /**
-     * Increments the reference count of this reader. Each call to this method
-     * must later be acknowledged by a call to {@link #release()}.
-     */
-    synchronized void acquire() {
-        refCount++;
-    }
+   /**
+    * {@inheritDoc}
+    */
+   protected synchronized void doClose() throws IOException
+   {
+      for (int i = 0; i < subReaders.length; i++)
+      {
+         subReaders[i].decRef();
+      }
+   }
 
-    /**
-     * {@inheritDoc}
-     */
-    public synchronized final void release() throws IOException {
-        if (--refCount == 0) {
-            close();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected synchronized void doClose() throws IOException {
-        for (int i = 0; i < subReaders.length; i++) {
-            subReaders[i].release();
-        }
-    }
+   @Override
+   public FieldInfos getFieldInfos()
+   {
+      FieldInfos fieldInfos = new FieldInfos();
+      for (ReadOnlyIndexReader subReader : subReaders)
+      {
+         fieldInfos.add(ReaderUtil.getMergedFieldInfos(subReader));
+      }
+      return fieldInfos;
+   }
 
     //-------------------------< MultiIndexReader >-----------------------------
 
@@ -222,7 +215,8 @@ public final class CachingMultiIndexReader
      * @param n document number.
      * @return the reader index.
      */
-    private int readerIndex(int n) {
+   protected int readerIndex(int n)
+   {
         int lo = 0;                                      // search starts array
         int hi = subReaders.length - 1;                  // for first element less
 

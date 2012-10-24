@@ -16,18 +16,20 @@
  */
 package org.exoplatform.services.jcr.impl.core.query.lucene;
 
-import java.io.IOException;
-import java.util.BitSet;
-
+import org.apache.lucene.index.FilterIndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermDocs;
+
+import java.io.IOException;
+import java.util.BitSet;
 
 /**
  * Implements an <code>IndexReader</code>, that will close when all connected
  * clients are disconnected AND the <code>SharedIndexReader</code>s
  * <code>close()</code> method itself has been called.
  */
-class SharedIndexReader extends RefCountingIndexReader {
+class SharedIndexReader extends FilterIndexReader implements ReferenceableIndexReader
+{
 
     /**
      * Creates a new <code>SharedIndexReader</code> which is based on
