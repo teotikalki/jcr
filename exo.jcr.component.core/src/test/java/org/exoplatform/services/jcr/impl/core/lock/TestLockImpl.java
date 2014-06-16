@@ -23,7 +23,8 @@ import org.exoplatform.services.jcr.core.ExtendedNode;
 import org.exoplatform.services.jcr.impl.core.NodeImpl;
 import org.exoplatform.services.jcr.impl.core.lock.cacheable.AbstractCacheableLockManager;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.CacheableWorkspaceDataManager;
-import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
+import org.exoplatform.services.jcr.storage.WorkspaceDataContainer;
+import org.picocontainer.Startable;
 
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
@@ -124,9 +125,8 @@ public class TestLockImpl extends JcrImplBaseTest
       assertTrue(node.isLocked());
 
       // remove lock properties from JCR tables
-      JDBCWorkspaceDataContainer container =
-         (JDBCWorkspaceDataContainer)repository.getWorkspaceContainer("ws").getComponent(
-            JDBCWorkspaceDataContainer.class);
+      Startable container =
+         (Startable)repository.getWorkspaceContainer("ws").getComponent(WorkspaceDataContainer.class);
       CacheableWorkspaceDataManager dataManager =
          (CacheableWorkspaceDataManager)repository.getWorkspaceContainer("ws").getComponent(
             CacheableWorkspaceDataManager.class);

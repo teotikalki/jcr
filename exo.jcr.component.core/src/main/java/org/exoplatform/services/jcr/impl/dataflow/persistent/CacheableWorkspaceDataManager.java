@@ -2440,15 +2440,21 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
     */
    public List<ACLHolder> getACLHolders() throws RepositoryException
    {
-      WorkspaceStorageConnection conn = dataContainer.openConnection();
-      try
+      return executeAction(new PrivilegedExceptionAction<List<ACLHolder>>()
       {
-         return conn.getACLHolders();
-      }
-      finally
-      {
-         conn.close();
-      }
+         public List<ACLHolder> run() throws RepositoryException
+         {
+            WorkspaceStorageConnection conn = dataContainer.openConnection();
+            try
+            {
+               return conn.getACLHolders();
+            }
+            finally
+            {
+               conn.close();
+            }
+         }
+      });
    }
 
    /**

@@ -34,11 +34,12 @@ import org.exoplatform.services.jcr.impl.core.itemfilters.PatternQPathEntry;
 import org.exoplatform.services.jcr.impl.core.itemfilters.PatternQPathEntryFilter;
 import org.exoplatform.services.jcr.impl.core.itemfilters.QPathEntryFilter;
 import org.exoplatform.services.jcr.impl.storage.SystemDataContainerHolder;
-import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 import org.exoplatform.services.jcr.storage.WorkspaceDataContainer;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import javax.jcr.RepositoryException;
 
 
@@ -65,8 +66,8 @@ public class TestUUIDWorkspaceStorageCache extends JcrAPIBaseTest
       super.setUp();
       WorkspaceContainerFacade wscf = repository.getWorkspaceContainer(repository.getSystemWorkspaceName());
       WorkspaceEntry wconf = (WorkspaceEntry)wscf.getComponent(WorkspaceEntry.class);
-      wdc = (JDBCWorkspaceDataContainer)session.getContainer()
-         .getComponentInstanceOfType(JDBCWorkspaceDataContainer.class);
+      wdc = (WorkspaceDataContainer)session.getContainer()
+         .getComponentInstanceOfType(WorkspaceDataContainer.class);
       WorkspaceStorageCache wsc = (WorkspaceStorageCache)session.getContainer()
          .getComponentInstanceOfType(WorkspaceStorageCache.class);
       this.cwdm =

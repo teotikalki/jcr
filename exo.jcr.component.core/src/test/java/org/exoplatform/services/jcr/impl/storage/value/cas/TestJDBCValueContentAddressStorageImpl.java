@@ -19,7 +19,9 @@
 package org.exoplatform.services.jcr.impl.storage.value.cas;
 
 import org.exoplatform.services.jcr.JcrImplBaseTest;
+import org.exoplatform.services.jcr.config.ValueStorageEntry;
 import org.exoplatform.services.jcr.config.WorkspaceEntry;
+import org.exoplatform.services.jcr.impl.storage.jdbc.DBConstants;
 import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 import org.exoplatform.services.jcr.impl.util.jdbc.DBInitializerHelper;
 import org.exoplatform.services.jcr.util.IdGenerator;
@@ -55,8 +57,32 @@ public class TestJDBCValueContentAddressStorageImpl extends JcrImplBaseTest
       {
          if (wse.getName().equals(session.getWorkspace().getName()))
          {
-            jdbcSourceName = wse.getContainer().getParameterValue(JDBCWorkspaceDataContainer.SOURCE_NAME);
-            jdbcDialect = DBInitializerHelper.getDatabaseDialect(wse);
+            jdbcSourceName = wse.getContainer().getParameterValue(JDBCWorkspaceDataContainer.SOURCE_NAME, null);
+            if (jdbcSourceName != null)
+            {
+               jdbcDialect = DBInitializerHelper.getDatabaseDialect(wse);
+            }
+            else
+            {
+               List<ValueStorageEntry> entries = wse.getContainer().getValueStorages();
+               if (entries != null)
+               {
+                  for (ValueStorageEntry entry : entries)
+                  {
+                     jdbcSourceName =
+                        entry.getParameterValue(JDBCValueContentAddressStorageImpl.JDBC_SOURCE_NAME_PARAM, null);
+                     if (jdbcSourceName != null)
+                     {
+                        jdbcDialect =
+                           entry.getParameterValue(JDBCValueContentAddressStorageImpl.JDBC_DIALECT_PARAM,
+                              DBConstants.DB_DIALECT_AUTO);
+                        jdbcDialect.toLowerCase();
+                        break;
+                     }
+                  }
+               }
+            }
+            break;
          }
       }
 

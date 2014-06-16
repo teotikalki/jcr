@@ -359,6 +359,11 @@
          <version>2.2.0</version>
          <scope>test</scope>
       </dependency>
+      <dependency>
+         <groupId>org.mongodb</groupId>
+         <artifactId>mongo-java-driver</artifactId>
+         <version>2.11.4</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
@@ -424,6 +429,7 @@
   </build>
   <modules>
     <module>exo.jcr.component.core</module>
+    <module>exo.jcr.component.core.impl.tokumx.v1</module>
     <module>exo.jcr.component.statistics</module>
     <module>exo.jcr.component.ext</module>
     <module>exo.jcr.component.ftp</module>

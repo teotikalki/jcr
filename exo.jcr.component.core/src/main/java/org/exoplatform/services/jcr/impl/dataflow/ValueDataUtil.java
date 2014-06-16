@@ -452,7 +452,7 @@ public class ValueDataUtil
 
       public PersistedValueData value;
 
-      private ValueDataWrapper()
+      public ValueDataWrapper()
       {
       }
    }

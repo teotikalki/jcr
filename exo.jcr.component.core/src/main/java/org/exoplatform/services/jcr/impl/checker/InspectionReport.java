@@ -222,6 +222,8 @@ public class InspectionReport
 
    private void writeLine(String message) throws IOException
    {
+      if (message == null)
+         return;
       writer.write(COMMENT);
       writer.write(message);
       writer.write(DELIMITER);
