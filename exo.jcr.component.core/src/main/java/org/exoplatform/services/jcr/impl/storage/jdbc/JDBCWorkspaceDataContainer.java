@@ -54,17 +54,17 @@ import org.exoplatform.services.jcr.impl.storage.jdbc.db.GenericConnectionFactor
 import org.exoplatform.services.jcr.impl.storage.jdbc.db.HSQLDBConnectionFactory;
 import org.exoplatform.services.jcr.impl.storage.jdbc.db.MSSQLConnectionFactory;
 import org.exoplatform.services.jcr.impl.storage.jdbc.db.MySQLConnectionFactory;
-import org.exoplatform.services.jcr.impl.storage.jdbc.init.DB2DBInitializer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.init.HSQLDBInitializer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.init.MSSQLDBInitializer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.init.MysqlDBInitializer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.init.SybaseDBInitializer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.db.SybaseConnectionFactory;
 import org.exoplatform.services.jcr.impl.storage.jdbc.indexing.JdbcNodeDataIndexingIterator;
+import org.exoplatform.services.jcr.impl.storage.jdbc.init.DB2DBInitializer;
+import org.exoplatform.services.jcr.impl.storage.jdbc.init.HSQLDBInitializer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.init.IngresSQLDBInitializer;
+import org.exoplatform.services.jcr.impl.storage.jdbc.init.MSSQLDBInitializer;
+import org.exoplatform.services.jcr.impl.storage.jdbc.init.MysqlDBInitializer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.init.OracleDBInitializer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.init.PgSQLDBInitializer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
+import org.exoplatform.services.jcr.impl.storage.jdbc.init.SybaseDBInitializer;
+import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.impl.storage.value.fs.FileValueStorage;
 import org.exoplatform.services.jcr.impl.util.io.DirectoryHelper;
 import org.exoplatform.services.jcr.impl.util.io.FileCleanerHolder;
@@ -114,13 +114,36 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
    protected static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.JDBCWorkspaceDataContainer");
 
    /**
+    * The category of the statistics of the JDBCStorageConnection
+    * this is used for backward compatibility in case the old system
+    * property <code>JDBCWorkspaceDataContainer.statistics.enabled</code> is used
+    */
+   private static final String CATEGORY = "JDBCStorageConnection";
+
+   /**
     * Indicates if the statistics has to be enabled.
     */
-   public static final boolean STATISTICS_ENABLED = Boolean.valueOf(PrivilegedSystemHelper
-      .getProperty("JDBCWorkspaceDataContainer.statistics.enabled"));
-
+   public static final boolean STATISTICS_ENABLED;
    static
    {
+      // We check both system properties for backward compatibility
+      boolean enabled =
+         Boolean.valueOf(PrivilegedSystemHelper.getProperty("JDBCWorkspaceDataContainer.statistics.enabled"));
+      if (!enabled)
+      {
+         enabled = Boolean.valueOf(PrivilegedSystemHelper.getProperty("WorkspaceDataContainer.statistics.enabled"));
+         if (enabled)
+         {
+            // Register the statistics using the new category name
+            StatisticsWorkspaceStorageConnection.registerStatistics();
+         }
+      }
+      else
+      {
+         // Register the statistics using the old category name
+         StatisticsWorkspaceStorageConnection.registerStatistics(CATEGORY);
+      }
+      STATISTICS_ENABLED = enabled;
       if (STATISTICS_ENABLED)
       {
          LOG.info("The statistics of the component JDBCWorkspaceDataContainer has been enabled");
@@ -275,7 +298,8 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
 
       try
       {
-         if (wsConfig.getContainer().getParameterValue(USE_SEQUENCE_FOR_ORDER_NUMBER, USE_SEQUENCE_AUTO).equalsIgnoreCase(USE_SEQUENCE_AUTO))
+         if (wsConfig.getContainer().getParameterValue(USE_SEQUENCE_FOR_ORDER_NUMBER, USE_SEQUENCE_AUTO)
+            .equalsIgnoreCase(USE_SEQUENCE_AUTO))
          {
             this.containerConfig.useSequenceForOrderNumber = useSequenceDefaultValue(this.containerConfig.dbDialect);
          }
@@ -319,7 +343,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       {
          cleanupSwapDirectory();
       }
-      
+
       this.containerConfig.initScriptPath =
          DBInitializerHelper.scriptPath(containerConfig.dbDialect, containerConfig.dbStructureType.isMultiDatabase());
 
@@ -354,7 +378,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       };
       SecurityHelper.doPrivilegedAction(action);
    }
-   
+
    /**
     * Prepare default connection factory.
     * 
@@ -498,12 +522,12 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
                + " in your use-case. This dialect is only dedicated to the community.");
          }
          this.connFactory = new MySQLConnectionFactory(getDataSource(), containerConfig);
-         dbInitializer = new MysqlDBInitializer(this.connFactory.getJdbcConnection(),containerConfig);
+         dbInitializer = new MysqlDBInitializer(this.connFactory.getJdbcConnection(), containerConfig);
       }
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_MSSQL))
       {
          this.connFactory = new MSSQLConnectionFactory(getDataSource(), containerConfig);
-         dbInitializer=new MSSQLDBInitializer(this.connFactory.getJdbcConnection(),containerConfig);
+         dbInitializer = new MSSQLDBInitializer(this.connFactory.getJdbcConnection(), containerConfig);
       }
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_DERBY))
       {
@@ -513,12 +537,12 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_DB2))
       {
          this.connFactory = defaultConnectionFactory();
-         dbInitializer = new DB2DBInitializer(this.connFactory.getJdbcConnection(),containerConfig);
+         dbInitializer = new DB2DBInitializer(this.connFactory.getJdbcConnection(), containerConfig);
       }
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_SYBASE))
       {
          this.connFactory = new SybaseConnectionFactory(getDataSource(), containerConfig);
-         dbInitializer = new SybaseDBInitializer(this.connFactory.getJdbcConnection(),containerConfig);
+         dbInitializer = new SybaseDBInitializer(this.connFactory.getJdbcConnection(), containerConfig);
       }
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_INGRES))
       {
@@ -528,7 +552,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       else if (containerConfig.dbDialect.startsWith(DBConstants.DB_DIALECT_HSQLDB))
       {
          this.connFactory = new HSQLDBConnectionFactory(getDataSource(), containerConfig);
-         dbInitializer = new HSQLDBInitializer(this.connFactory.getJdbcConnection(),containerConfig);
+         dbInitializer = new HSQLDBInitializer(this.connFactory.getJdbcConnection(), containerConfig);
       }
       else
       {
@@ -566,7 +590,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       WorkspaceStorageConnection con = connFactory.openConnection();
       if (STATISTICS_ENABLED)
       {
-         con = new StatisticsJDBCStorageConnection(con);
+         con = new StatisticsWorkspaceStorageConnection(con);
       }
       return con;
    }
@@ -579,7 +603,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
       WorkspaceStorageConnection con = connFactory.openConnection(readOnly);
       if (STATISTICS_ENABLED)
       {
-         con = new StatisticsJDBCStorageConnection(con);
+         con = new StatisticsWorkspaceStorageConnection(con);
       }
       return con;
    }
@@ -589,9 +613,9 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
     */
    public WorkspaceStorageConnection reuseConnection(WorkspaceStorageConnection original) throws RepositoryException
    {
-      if (original instanceof StatisticsJDBCStorageConnection)
+      if (original instanceof StatisticsWorkspaceStorageConnection)
       {
-         original = ((StatisticsJDBCStorageConnection)original).getNestedWorkspaceStorageConnection();
+         original = ((StatisticsWorkspaceStorageConnection)original).getNestedWorkspaceStorageConnection();
       }
 
       if (original instanceof JDBCStorageConnection)
@@ -633,8 +657,8 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
                   }
                }));
 
-         return STATISTICS_ENABLED ? new StatisticsJDBCStorageConnection(cFactory.openConnection(false)) : cFactory
-            .openConnection(false);
+         return STATISTICS_ENABLED ? new StatisticsWorkspaceStorageConnection(cFactory.openConnection(false))
+            : cFactory.openConnection(false);
       }
       else
       {
@@ -747,9 +771,9 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
          {
             boolean failed = true;
             WorkspaceStorageConnection wsc = openConnection(false);
-            if (wsc instanceof StatisticsJDBCStorageConnection)
+            if (wsc instanceof StatisticsWorkspaceStorageConnection)
             {
-               wsc = ((StatisticsJDBCStorageConnection)wsc).getNestedWorkspaceStorageConnection();
+               wsc = ((StatisticsWorkspaceStorageConnection)wsc).getNestedWorkspaceStorageConnection();
             }
             JDBCStorageConnection conn = (JDBCStorageConnection)wsc;
             try
@@ -776,7 +800,6 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
          LOG.error("Can't remove lock properties because of " + e.getMessage(), e);
       }
    }
-
 
    /**
     * {@inheritDoc}
@@ -828,7 +851,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
     */
    public void clean() throws BackupException
    {
-      LOG.info("Start to clean value storage of the workspace '"+containerConfig.containerName+"'");
+      LOG.info("Start to clean value storage of the workspace '" + containerConfig.containerName + "'");
       try
       {
          DBCleanService.cleanWorkspaceData(wsConfig);
@@ -868,7 +891,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
     */
    public void backup(final File storageDir) throws BackupException
    {
-      LOG.info("Start to backup value storage of the workspace '"+containerConfig.containerName+"'");
+      LOG.info("Start to backup value storage of the workspace '" + containerConfig.containerName + "'");
       ObjectWriter backupInfo = null;
 
       try
@@ -1179,7 +1202,7 @@ public class JDBCWorkspaceDataContainer extends WorkspaceDataContainerBase imple
    /**
     * use-sequence value according to dialect
     */
-   public static boolean useSequenceDefaultValue(String  dbDialect)
+   public static boolean useSequenceDefaultValue(String dbDialect)
    {
       if (dbDialect.startsWith(DBConstants.DB_DIALECT_ORACLE))
       {

@@ -74,7 +74,7 @@ import org.exoplatform.services.jcr.impl.core.query.SearchIndexConfigurationHelp
 import org.exoplatform.services.jcr.impl.core.query.lucene.directory.DirectoryManager;
 import org.exoplatform.services.jcr.impl.core.query.lucene.directory.FSDirectoryManager;
 import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
-import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
+import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.statistics.JCRStatisticsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -820,21 +820,21 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    private void checkLoadBatchingThresholds()
    {
       float getByIdAvg =
-         JCRStatisticsManager.getAvg(StatisticsJDBCStorageConnection.CATEGORY,
-            StatisticsJDBCStorageConnection.GET_ITEM_DATA_BY_ID_DESCR);
+         JCRStatisticsManager.getAvg(StatisticsWorkspaceStorageConnection.CATEGORY,
+            StatisticsWorkspaceStorageConnection.GET_ITEM_DATA_BY_ID_DESCR);
       if (getByIdAvg <= 0f)
       {
          log.debug("Don't have any statistics about '{}' so we cannot go any further for now",
-            StatisticsJDBCStorageConnection.GET_ITEM_DATA_BY_ID_DESCR);
+            StatisticsWorkspaceStorageConnection.GET_ITEM_DATA_BY_ID_DESCR);
          return;
       }
       float getByNameAvg =
-         JCRStatisticsManager.getAvg(StatisticsJDBCStorageConnection.CATEGORY,
-            StatisticsJDBCStorageConnection.GET_ITEM_DATA_BY_NODE_DATA_NQ_PATH_ENTRY_DESCR);
+         JCRStatisticsManager.getAvg(StatisticsWorkspaceStorageConnection.CATEGORY,
+            StatisticsWorkspaceStorageConnection.GET_ITEM_DATA_BY_NODE_DATA_NQ_PATH_ENTRY_DESCR);
       if (getByNameAvg <= 0f)
       {
          log.debug("Don't have any statistics about '{}' so we cannot go any further for now",
-            StatisticsJDBCStorageConnection.GET_ITEM_DATA_BY_NODE_DATA_NQ_PATH_ENTRY_DESCR);
+            StatisticsWorkspaceStorageConnection.GET_ITEM_DATA_BY_NODE_DATA_NQ_PATH_ENTRY_DESCR);
          return;
       }
       log.debug("getByIdAvg = {} and getByNameAvg = {}", getByIdAvg, getByNameAvg);
@@ -843,12 +843,12 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
       if (indexingLoadBatchingThresholdProperty > -1)
       {
          float getPropertiesByNameAvg =
-            JCRStatisticsManager.getAvg(StatisticsJDBCStorageConnection.CATEGORY,
-               StatisticsJDBCStorageConnection.GET_CHILD_PROPERTIES_DATA_PATTERN_DESCR);
+            JCRStatisticsManager.getAvg(StatisticsWorkspaceStorageConnection.CATEGORY,
+               StatisticsWorkspaceStorageConnection.GET_CHILD_PROPERTIES_DATA_PATTERN_DESCR);
          if (getPropertiesByNameAvg <= 0f)
          {
             log.debug("Don't have any statistics about '{}' so we cannot go any further for this threshold now",
-               StatisticsJDBCStorageConnection.GET_CHILD_PROPERTIES_DATA_PATTERN_DESCR);
+               StatisticsWorkspaceStorageConnection.GET_CHILD_PROPERTIES_DATA_PATTERN_DESCR);
          }
          else
          {
@@ -864,21 +864,21 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
       if (indexingLoadBatchingThresholdNode > -1)
       {
          float getAllPropertiesAvg =
-            JCRStatisticsManager.getAvg(StatisticsJDBCStorageConnection.CATEGORY,
-               StatisticsJDBCStorageConnection.GET_CHILD_PROPERTIES_DATA_DESCR);
+            JCRStatisticsManager.getAvg(StatisticsWorkspaceStorageConnection.CATEGORY,
+               StatisticsWorkspaceStorageConnection.GET_CHILD_PROPERTIES_DATA_DESCR);
          if (getAllPropertiesAvg <= 0f)
          {
             log.debug("Don't have any statistics about '{}' so we cannot go any further for this threshold now",
-               StatisticsJDBCStorageConnection.GET_CHILD_PROPERTIES_DATA_DESCR);
+               StatisticsWorkspaceStorageConnection.GET_CHILD_PROPERTIES_DATA_DESCR);
             return;
          }
          float listAllPropertiesAvg =
-            JCRStatisticsManager.getAvg(StatisticsJDBCStorageConnection.CATEGORY,
-               StatisticsJDBCStorageConnection.LIST_CHILD_PROPERTIES_DATA_DESCR);
+            JCRStatisticsManager.getAvg(StatisticsWorkspaceStorageConnection.CATEGORY,
+               StatisticsWorkspaceStorageConnection.LIST_CHILD_PROPERTIES_DATA_DESCR);
          if (listAllPropertiesAvg <= 0f)
          {
             log.debug("Don't have any statistics about '{}' so we cannot go any further for this threshold now",
-               StatisticsJDBCStorageConnection.LIST_CHILD_PROPERTIES_DATA_DESCR);
+               StatisticsWorkspaceStorageConnection.LIST_CHILD_PROPERTIES_DATA_DESCR);
             return;
          }
          log.debug("getAllPropertiesAvg = {} and listAllPropertiesAvg = {}", getAllPropertiesAvg, listAllPropertiesAvg);

@@ -613,15 +613,7 @@ public class TestRepositoryManagement extends JcrImplBaseTest
 
          for (WorkspaceEntry ws : repositoryEntry.getWorkspaceEntries())
          {
-            if (ws.getContainer().hasParameter("source-name"))
-            {
-               ws.getContainer().addParameter(new SimpleParameterEntry("source-name", newDatasourceName));
-            }
-
-            if (ws.getLockManager().hasParameter("infinispan-cl-cache.jdbc.datasource"))
-            {
-               ws.getLockManager().addParameter(new SimpleParameterEntry("infinispan-cl-cache.jdbc.datasource", newDatasourceName));
-            }
+            helper.setSourceName(ws, newDatasourceName);
          }
 
          service.removeRepository(repository.getConfiguration().getName());

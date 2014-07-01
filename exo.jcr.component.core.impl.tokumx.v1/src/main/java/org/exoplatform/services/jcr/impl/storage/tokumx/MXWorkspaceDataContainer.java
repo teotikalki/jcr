@@ -22,6 +22,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.PrivilegedSystemHelper;
@@ -34,10 +35,11 @@ import org.exoplatform.services.jcr.impl.Constants;
 import org.exoplatform.services.jcr.impl.core.lock.cacheable.AbstractCacheableLockManager;
 import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.WorkspaceDataContainerBase;
-import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
+import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.impl.util.io.FileCleanerHolder;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
 import org.exoplatform.services.jcr.storage.value.ValueStoragePluginProvider;
+import org.exoplatform.services.jcr.tokumx.Utils;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.naming.InitialContextInitializer;
@@ -45,7 +47,6 @@ import org.picocontainer.Startable;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 
@@ -60,21 +61,42 @@ import javax.naming.NamingException;
 public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase implements Startable
 {
 
-   protected static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.MXWorkspaceDataContainer");
+   private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceDataContainer");
 
    /**
     * Indicates if the statistics has to be enabled.
     */
    public static final boolean STATISTICS_ENABLED = Boolean.valueOf(PrivilegedSystemHelper
-      .getProperty("JDBCWorkspaceDataContainer.statistics.enabled"));
+      .getProperty("WorkspaceDataContainer.statistics.enabled"));
 
    static
    {
       if (STATISTICS_ENABLED)
       {
+         StatisticsWorkspaceStorageConnection.registerStatistics();
          LOG.info("The statistics of the component MXWorkspaceDataContainer has been enabled");
       }
    }
+
+   /**
+    * Suffix used in collection names
+    */
+   public final static String COLLECTION_NAME_SUFFIX = "collection-name-suffix";
+
+   /**
+    * Indicates whether the auto commit mode must be enabled
+    */
+   public final static String AUTO_COMMIT = "auto-commit";
+
+   /**
+    * Use sequence for order number
+    */
+   public final static String USE_SEQUENCE_FOR_ORDER_NUMBER = "use-sequence-for-order-number";
+
+   /**
+    * The mongo connection URI
+    */
+   public final static String CONNECTION_URI = "connection-uri";
 
    /**
     * Workspace configuration.
@@ -91,20 +113,32 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
     */
    private final SpoolConfig spoolConfig;
 
-   private static final MongoClient MONGO_CLIENT;
-   static
-   {
-      MongoClient client = null;
-      try
-      {
-         client = new MongoClient();
-      }
-      catch (UnknownHostException e)
-      {
-         throw new RuntimeException("Could not connect to mongo db", e);
-      }
-      MONGO_CLIENT = client;
-   }
+   /**
+    * The name of the collection
+    */
+   private final String collectionName;
+
+   /**
+    * Indicates whether the auto commit mode is enabled
+    * The auto commit mode is disabled by default
+    * Enabling the auto commit mode allows to use MongoDB directly or the sharding mode
+    */
+   private final boolean autoCommit;
+
+   /**
+    * Indicates whether a sequence should be used to get the last order number
+    */
+   private final boolean useSequenceForOrderNumber;
+
+   /**
+    * The target database
+    */
+   private final DB database;
+
+   /**
+    * The connection pool used to access to the database
+    */
+   private final MongoClient client;
 
    /**
     * Constructor with value storage plugins.
@@ -158,6 +192,17 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
       {
          cleanupSwapDirectory();
       }
+      String collectionNameSuffix =
+         wsConfig.getContainer().getParameterValue(COLLECTION_NAME_SUFFIX, wsConfig.getUniqueName());
+      this.collectionName = Utils.getCollectionName("jcr", collectionNameSuffix);
+      this.autoCommit = wsConfig.getContainer().getParameterBoolean(AUTO_COMMIT, Boolean.FALSE);
+      this.useSequenceForOrderNumber =
+         wsConfig.getContainer().getParameterBoolean(USE_SEQUENCE_FOR_ORDER_NUMBER, Boolean.TRUE);
+
+      MongoClientURI uri = new MongoClientURI(wsConfig.getContainer().getParameterValue(CONNECTION_URI));
+      String databaseName = uri.getDatabase() == null || uri.getDatabase().isEmpty() ? "jcr" : uri.getDatabase();
+      this.client = new MongoClient(uri);
+      this.database = client.getDB(databaseName);
 
       LOG.info(getInfo());
 
@@ -194,44 +239,49 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    private void initDatabase()
    {
       DB db = getDB();
+      db.requestStart();
       try
       {
          db.requestEnsureConnection();
-         if (!db.collectionExists(wsConfig.getUniqueName()))
+         if (!db.collectionExists(collectionName))
          {
-            LOG.debug("The collection '{}' doesn't exist so it will be created", wsConfig.getUniqueName());
-            DBCollection collection = db.createCollection(wsConfig.getUniqueName(), new BasicDBObject());
-            LOG.debug("The collection '{}' has successfully been created", wsConfig.getUniqueName());
+            LOG.debug("The collection '{}' doesn't exist so it will be created", collectionName);
+            DBCollection collection = db.createCollection(collectionName, new BasicDBObject());
+            LOG.debug("The collection '{}' has successfully been created", collectionName);
             collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.ID, 1), new BasicDBObject("unique",
                Boolean.TRUE).append("clustering", Boolean.TRUE));
             collection.ensureIndex(
-               new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1).append(MXWorkspaceStorageConnection.NAME, 1)
-                  .append(MXWorkspaceStorageConnection.INDEX, 1).append(MXWorkspaceStorageConnection.IS_NODE, -1)
-                  .append(MXWorkspaceStorageConnection.VERSION, -1), new BasicDBObject("unique", Boolean.TRUE));
+               new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1)
+                  .append(MXWorkspaceStorageConnection.NAME, 1).append(MXWorkspaceStorageConnection.INDEX, 1)
+                  .append(MXWorkspaceStorageConnection.IS_NODE, -1).append(MXWorkspaceStorageConnection.VERSION, -1),
+               new BasicDBObject("unique", Boolean.TRUE));
             collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1).append(
                MXWorkspaceStorageConnection.IS_NODE, 1).append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1));
             collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.VALUES + "."
                + MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, 1).append(MXWorkspaceStorageConnection.ID, 1),
                new BasicDBObject("sparse", Boolean.TRUE));
-            LOG.debug("The indexes of the collection '{}' has successfully created", wsConfig.getUniqueName());
-            // A workaround to prevent getting : Cannot transition from not multi key to multi key in multi statement transaction
-            // We need to initialize the multi-key index outside a multi-statement transaction
-            BasicDBObject node =
-               new BasicDBObject(MXWorkspaceStorageConnection.ID, Constants.ROOT_PARENT_UUID)
-                  .append(MXWorkspaceStorageConnection.PARENT_ID, Constants.ROOT_PARENT_UUID)
-                  .append(MXWorkspaceStorageConnection.NAME, Constants.ROOT_PARENT_UUID)
-                  .append(MXWorkspaceStorageConnection.INDEX, 1)
-                  .append(MXWorkspaceStorageConnection.IS_NODE, Boolean.TRUE)
-                  .append(MXWorkspaceStorageConnection.VERSION, 1)
-                  .append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1)
-                  .append(
-                     MXWorkspaceStorageConnection.VALUES,
-                     Arrays.asList(new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo"),
-                        new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo2")));
-            collection.insert(node);
-            LOG.debug("The fake node has been added successfully to the collection '{}'", wsConfig.getUniqueName());
-            collection.remove(node);
-            LOG.debug("The fake node has been removed successfully from the collection '{}'", wsConfig.getUniqueName());
+            LOG.debug("The indexes of the collection '{}' has successfully created", collectionName);
+            if (!autoCommit)
+            {
+               // A workaround to prevent getting : Cannot transition from not multi key to multi key in multi statement transaction
+               // We need to initialize the multi-key index outside a multi-statement transaction
+               BasicDBObject node =
+                  new BasicDBObject(MXWorkspaceStorageConnection.ID, Constants.ROOT_PARENT_UUID)
+                     .append(MXWorkspaceStorageConnection.PARENT_ID, Constants.ROOT_PARENT_UUID)
+                     .append(MXWorkspaceStorageConnection.NAME, Constants.ROOT_PARENT_UUID)
+                     .append(MXWorkspaceStorageConnection.INDEX, 1)
+                     .append(MXWorkspaceStorageConnection.IS_NODE, Boolean.TRUE)
+                     .append(MXWorkspaceStorageConnection.VERSION, 1)
+                     .append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1)
+                     .append(
+                        MXWorkspaceStorageConnection.VALUES,
+                        Arrays.asList(new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo"),
+                           new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo2")));
+               collection.insert(node);
+               LOG.debug("The fake node has been added successfully to the collection '{}'", collectionName);
+               collection.remove(node);
+               LOG.debug("The fake node has been removed successfully from the collection '{}'", collectionName);
+            }
          }
       }
       finally
@@ -240,9 +290,13 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
       }
    }
 
+   /**
+    * Gives the target database
+    * @return
+    */
    private DB getDB()
    {
-      return MONGO_CLIENT.getDB("jcr");
+      return database;
    }
 
    /**
@@ -267,11 +321,11 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    public WorkspaceStorageConnection openConnection(boolean readOnly) throws RepositoryException
    {
       WorkspaceStorageConnection con =
-         new MXWorkspaceStorageConnection(getDB(), wsConfig.getUniqueName(), readOnly, valueStorageProvider,
-            spoolConfig);
+         new MXWorkspaceStorageConnection(getDB(), collectionName, readOnly, autoCommit, useSequenceForOrderNumber,
+            valueStorageProvider, spoolConfig);
       if (STATISTICS_ENABLED)
       {
-         con = new StatisticsJDBCStorageConnection(con);
+         con = new StatisticsWorkspaceStorageConnection(con);
       }
       return con;
    }
@@ -353,9 +407,9 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
          {
             boolean failed = true;
             WorkspaceStorageConnection wsc = openConnection(false);
-            if (wsc instanceof StatisticsJDBCStorageConnection)
+            if (wsc instanceof StatisticsWorkspaceStorageConnection)
             {
-               wsc = ((StatisticsJDBCStorageConnection)wsc).getNestedWorkspaceStorageConnection();
+               wsc = ((StatisticsWorkspaceStorageConnection)wsc).getNestedWorkspaceStorageConnection();
             }
             MXWorkspaceStorageConnection conn = (MXWorkspaceStorageConnection)wsc;
             try
@@ -384,6 +438,8 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
     */
    public void stop()
    {
+      if (client != null)
+         client.close();
    }
 
 }

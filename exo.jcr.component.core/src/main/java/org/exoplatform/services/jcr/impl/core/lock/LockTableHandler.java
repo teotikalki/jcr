@@ -37,7 +37,7 @@ public interface LockTableHandler
     * @return {@link Set} of node IDs
     * @throws SQLException
     */
-   Set<String> getLockedNodesIds() throws SQLException;
+   Set<String> getLockedNodesIds() throws Exception;
 
    /**
     * Removes locked node directly from database.
@@ -46,5 +46,5 @@ public interface LockTableHandler
     *          node identifier
     * @throws SQLException
     */
-   void removeLockedNode(String nodeId) throws SQLException;
+   void removeLockedNode(String nodeId) throws Exception;
 }

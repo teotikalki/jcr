@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
    <!--
 
-      Copyright (C) 2009 eXo Platform SAS. This is free software; you can redistribute it and/or modify it under the
-      terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of
-      the License, or (at your option) any later version. This software is distributed in the hope that it will be
-      useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-      PURPOSE. See the GNU Lesser General Public License for more details. You should have received a copy of the GNU
-      Lesser General Public License along with this software; if not, write to the Free Software Foundation, Inc., 51
-      Franklin St, Fifth Floor, Boston, MA 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+    Copyright (C) 2009 eXo Platform SAS.
+
+    This is free software; you can redistribute it and/or modify it
+    under the terms of the GNU Lesser General Public License as
+    published by the Free Software Foundation; either version 2.1 of
+    the License, or (at your option) any later version.
+
+    This software is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this software; if not, write to the Free
+    Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+    02110-1301 USA, or see the FSF site: http://www.fsf.org.
+
    -->
 <repository-service default-repository="db1">
    <repositories>
@@ -24,15 +34,17 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws" />
+                     <property name="collection-name-suffix" value="db1ws" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws" />
                            <property name="digest-algo" value="MD5" />
-                           <property name="vcas-type"
-                              value="org.exoplatform.services.jcr.impl.storage.value.cas.JDBCValueContentAddressStorageImpl" />
+                           <property name="vcas-type" value="org.exoplatform.services.jcr.impl.storage.value.cas.JDBCValueContentAddressStorageImpl" />
                            <property name="jdbc-source-name" value="jdbcjcr" />
                            <property name="jdbc-dialect" value="auto" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -48,8 +60,7 @@
                      <property name="root-nodetype" value="nt:unstructured" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -71,20 +82,15 @@
                      <property name="indexing-load-batching-threshold-ttl" value="15s" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
+                     <property name="infinispan-cl-cache.mongodb.collection.name" value="db1ws" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -94,10 +100,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws1" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws1" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -108,8 +116,7 @@
                      </value-storage>
                   </value-storages>
                </container>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -137,20 +144,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -160,10 +161,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws2" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws2"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws2" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -174,8 +177,7 @@
                      </value-storage>
                   </value-storages>
                </container>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -203,20 +205,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -227,14 +223,17 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws3" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
                      <!--
-                        This storage is used to check whether properties are removed correctly from each value-storage
+                      This storage is used to check whether properties are removed
+                      correctly from each value-storage
                         (TestRemoveFromValueStorage.java)
                      -->
-                     <value-storage id="ws3_big"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws3_big" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws3_big" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -243,13 +242,11 @@
                            <filter property-type="Binary" min-value-size="1024K" />
                         </filters>
                      </value-storage>
-                     <value-storage id="ws3"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.CASableTreeFileValueStorage">
+                     <value-storage id="ws3" class="org.exoplatform.services.jcr.impl.storage.value.fs.CASableTreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws3" />
                            <property name="digest-algo" value="MD5" />
-                           <property name="vcas-type"
-                              value="org.exoplatform.services.jcr.impl.storage.value.cas.JDBCValueContentAddressStorageImpl" />
+                           <property name="vcas-type" value="org.exoplatform.services.jcr.impl.storage.value.cas.JDBCValueContentAddressStorageImpl" />
                            <property name="jdbc-source-name" value="jdbcjcr" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
@@ -264,8 +261,7 @@
                      <property name="root-nodetype" value="nt:unstructured" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -293,20 +289,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -326,10 +316,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/wsdb2" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/wsdb2" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -343,12 +335,10 @@
                <initializer class="org.exoplatform.services.jcr.impl.core.ScratchWorkspaceInitializer">
                   <properties>
                      <property name="root-nodetype" value="nt:unstructured" />
-                     <property name="root-permissions"
-                        value="*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
+                     <property name="root-permissions" value="*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -368,20 +358,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -391,10 +375,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws1db2" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws1db2" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -411,8 +397,7 @@
                      <property name="root-permissions" value="any read;any add_node;any set_property;any remove" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -432,20 +417,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -465,10 +444,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/wstck" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/wstck" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -482,12 +463,10 @@
                <initializer class="org.exoplatform.services.jcr.impl.core.ScratchWorkspaceInitializer">
                   <properties>
                      <property name="root-nodetype" value="nt:unstructured" />
-                     <property name="root-permissions"
-                        value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
+                     <property name="root-permissions" value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -516,20 +495,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -539,10 +512,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws1tck" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws1tck" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -556,12 +531,10 @@
                <initializer class="org.exoplatform.services.jcr.impl.core.ScratchWorkspaceInitializer">
                   <properties>
                      <property name="root-nodetype" value="nt:unstructured" />
-                     <property name="root-permissions"
-                        value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
+                     <property name="root-permissions" value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -589,20 +562,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>
@@ -612,10 +579,12 @@
                   <properties>
                      <property name="max-buffer-size" value="200k" />
                      <property name="swap-directory" value="target/temp/swap/ws2tck" />
+                     <property name="use-sequence-for-order-number" value="${use-sequence}" />
+                     <property name="auto-commit" value="${auto-commit}" />
+                     <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws2"
-                        class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
                         <properties>
                            <property name="path" value="target/temp/values/ws2tck" />
                            <property name="enabled" value="${value-storage-enabled}" />
@@ -629,12 +598,10 @@
                <initializer class="org.exoplatform.services.jcr.impl.core.ScratchWorkspaceInitializer">
                   <properties>
                      <property name="root-nodetype" value="nt:unstructured" />
-                     <property name="root-permissions"
-                        value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
+                     <property name="root-permissions" value="any read;*:/platform/administrators read;*:/platform/administrators add_node;*:/platform/administrators set_property;*:/platform/administrators remove" />
                   </properties>
                </initializer>
-               <cache enabled="${cache-enabled}"
-                  class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
+               <cache enabled="${cache-enabled}" class="org.exoplatform.services.jcr.impl.dataflow.persistent.infinispan.ISPNCacheWorkspaceStorageCache">
                   <properties>
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-config.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
@@ -665,20 +632,14 @@
                      <property name="indexing-load-batching-threshold-property" value="10" />
                   </properties>
                </query-handler>
-               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.infinispan.ISPNCacheableLockManagerImpl">
+               <lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl">
                   <properties>
                      <property name="time-out" value="15m" />
                      <property name="infinispan-configuration" value="conf/standalone/cluster/test-infinispan-lock.xml" />
                      <property name="jgroups-configuration" value="udp-mux.xml" />
                      <property name="infinispan-cluster-name" value="JCR-cluster" />
-                     <property name="infinispan-cl-cache.jdbc.table.name" value="lk" />
-                     <property name="infinispan-cl-cache.jdbc.table.create" value="true" />
-                     <property name="infinispan-cl-cache.jdbc.table.drop" value="false" />
-                     <property name="infinispan-cl-cache.jdbc.id.column" value="id" />
-                     <property name="infinispan-cl-cache.jdbc.data.column" value="data" />
-                     <property name="infinispan-cl-cache.jdbc.timestamp.column" value="timestamp" />
-                     <property name="infinispan-cl-cache.jdbc.datasource" value="jdbcjcr" />
-                     <property name="infinispan-cl-cache.jdbc.connectionFactory" value="org.exoplatform.services.jcr.infinispan.ManagedConnectionFactory" />
+                     <property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" />
+                     <property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" />
                   </properties>
                </lock-manager>
             </workspace>

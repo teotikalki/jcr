@@ -40,8 +40,10 @@ import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCDataContainerConfig.Da
 import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 import javax.jcr.RepositoryException;
 import javax.naming.Context;
@@ -58,7 +60,7 @@ public class TesterConfigurationHelper
 {
    private static TesterConfigurationHelper instance;
 
-   private TesterConfigurationHelper()
+   protected TesterConfigurationHelper()
    {
       System.setProperty(Context.INITIAL_CONTEXT_FACTORY, "org.exoplatform.services.naming.SimpleContextFactory");
    }
@@ -463,11 +465,29 @@ public class TesterConfigurationHelper
       return ids;
    }
 
+   public void setSourceName(WorkspaceEntry ws, String newDatasourceName)
+   {
+      if (ws.getContainer().hasParameter("source-name"))
+      {
+         ws.getContainer().addParameter(new SimpleParameterEntry("source-name", newDatasourceName));
+      }
+
+      if (ws.getLockManager().hasParameter("infinispan-cl-cache.jdbc.datasource"))
+      {
+         ws.getLockManager().addParameter(new SimpleParameterEntry("infinispan-cl-cache.jdbc.datasource", newDatasourceName));
+      }
+   }
+
    public static TesterConfigurationHelper getInstance()
    {
       if (instance == null)
       {
-         instance = new TesterConfigurationHelper();
+         ServiceLoader<TesterConfigurationHelper> loader = ServiceLoader.load(TesterConfigurationHelper.class);
+         Iterator<TesterConfigurationHelper> it = loader.iterator();
+         if (it.hasNext())
+            instance = it.next();
+         else
+            instance = new TesterConfigurationHelper();
       }
 
       return instance;

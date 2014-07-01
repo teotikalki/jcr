@@ -20,7 +20,6 @@ package org.exoplatform.services.jcr.impl.storage.jdbc;
 
 import org.exoplatform.commons.utils.SecurityHelper;
 import org.exoplatform.services.database.utils.JDBCUtils;
-import org.exoplatform.services.jcr.config.RepositoryConfigurationException;
 import org.exoplatform.services.jcr.config.WorkspaceEntry;
 import org.exoplatform.services.jcr.core.security.JCRRuntimePermissions;
 import org.exoplatform.services.jcr.datamodel.ItemType;
@@ -60,11 +59,10 @@ import java.util.List;
 import java.util.Set;
 
 import javax.jcr.RepositoryException;
-import javax.naming.NamingException;
 
 /**
  * @author <a href="mailto:skarpenko@exoplatform.com">Sergiy Karpenko</a>
- * @version $Id: exo-jboss-codetemplates.xml 34360 14 жовт. 2011 skarpenko $
+ * @version $Id: exo-jboss-codetemplates.xml 34360 14 . 2011 skarpenko $
  *
  */
 public class JDBCWorkspaceDataContainerChecker
@@ -136,19 +134,7 @@ public class JDBCWorkspaceDataContainerChecker
          checkConsistencyInJCRITEM(lockedInJCRITEM, lockedInJCRLOCK, autoRepair);
          checkConsistencyInJCRLOCK(lockedInJCRITEM, lockedInJCRLOCK, autoRepair);
       }
-      catch (SQLException e)
-      {
-         logExceptionAndSetInconsistency("Unexpected exception during LOCK DB checking.", e);
-      }
-      catch (NamingException e)
-      {
-         logExceptionAndSetInconsistency("Unexpected exception during LOCK DB checking.", e);
-      }
-      catch (RepositoryConfigurationException e)
-      {
-         logExceptionAndSetInconsistency("Unexpected exception during LOCK DB checking.", e);
-      }
-      catch (RepositoryException e)
+      catch (Exception e)
       {
          logExceptionAndSetInconsistency("Unexpected exception during LOCK DB checking.", e);
       }
@@ -198,7 +184,7 @@ public class JDBCWorkspaceDataContainerChecker
    }
 
    private void checkConsistencyInJCRLOCK(Set<String> lockedInJCRITEM, Set<String> lockedInJCRLOCK, boolean autoRepair)
-      throws NamingException, RepositoryConfigurationException, SQLException
+      throws Exception
    {
       for (String nodeId : lockedInJCRLOCK)
       {

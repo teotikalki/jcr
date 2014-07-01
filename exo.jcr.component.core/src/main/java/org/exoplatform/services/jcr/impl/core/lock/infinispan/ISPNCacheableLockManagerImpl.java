@@ -75,7 +75,7 @@ public class ISPNCacheableLockManagerImpl extends AbstractCacheableLockManager
 
    public static final String INFINISPAN_JDBC_CL_AUTO = "auto";
 
-   private AdvancedCache<Serializable, Object> cache;
+   protected AdvancedCache<Serializable, Object> cache;
 
    public ISPNCacheableLockManagerImpl(WorkspacePersistentDataManager dataManager, WorkspaceEntry config,
       InitialContextInitializer context, TransactionService transactionService, ConfigurationManager cfm,
@@ -100,26 +100,7 @@ public class ISPNCacheableLockManagerImpl extends AbstractCacheableLockManager
       // make cache
       if (config.getLockManager() != null)
       {
-         // create cache using custom factory
-         ISPNCacheFactory<Serializable, Object> factory = new ISPNCacheFactory<Serializable, Object>(cfm, transactionManager);
-
-         try
-         {
-            String dataSourceName = config.getLockManager().getParameterValue(INFINISPAN_JDBC_CL_DATASOURCE);
-            dataSource = (DataSource)new InitialContext().lookup(dataSourceName);
-         }
-         catch (NamingException e)
-         {
-            throw new RepositoryException(e.getMessage(), e);
-         }
-
-         // configure cache loader parameters with correct DB data-types
-         ISPNCacheFactory.configureCacheStore(config.getLockManager(), INFINISPAN_JDBC_CL_DATASOURCE,
-            INFINISPAN_JDBC_CL_DATA_COLUMN, INFINISPAN_JDBC_CL_ID_COLUMN, INFINISPAN_JDBC_CL_TIMESTAMP_COLUMN);
-
-         cache =
-            factory.createCache("L" + config.getUniqueName().replace("_", ""), config.getLockManager())
-               .getAdvancedCache();
+         init(config, transactionManager, cfm);
       }
       else
       {
@@ -197,6 +178,34 @@ public class ISPNCacheableLockManagerImpl extends AbstractCacheableLockManager
             return locksData;
          }
       };
+   }
+
+   /**
+    * Initializes the lock manager
+    */
+   protected void init(WorkspaceEntry config, TransactionManager transactionManager, ConfigurationManager cfm)
+      throws RepositoryConfigurationException, RepositoryException
+   {
+      // create cache using custom factory
+      ISPNCacheFactory<Serializable, Object> factory = new ISPNCacheFactory<Serializable, Object>(cfm, transactionManager);
+
+      try
+      {
+         String dataSourceName = config.getLockManager().getParameterValue(INFINISPAN_JDBC_CL_DATASOURCE);
+         dataSource = (DataSource)new InitialContext().lookup(dataSourceName);
+      }
+      catch (NamingException e)
+      {
+         throw new RepositoryException(e.getMessage(), e);
+      }
+
+      // configure cache loader parameters with correct DB data-types
+      ISPNCacheFactory.configureCacheStore(config.getLockManager(), INFINISPAN_JDBC_CL_DATASOURCE,
+         INFINISPAN_JDBC_CL_DATA_COLUMN, INFINISPAN_JDBC_CL_ID_COLUMN, INFINISPAN_JDBC_CL_TIMESTAMP_COLUMN);
+
+      cache =
+         factory.createCache("L" + config.getUniqueName().replace("_", ""), config.getLockManager())
+            .getAdvancedCache();
    }
    
    /**

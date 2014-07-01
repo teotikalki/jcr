@@ -107,7 +107,7 @@ import javax.jcr.ValueFormatException;
  */
 public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
 {
-   private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.MXWorkspaceStorageConnection");
+   private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceStorageConnection");
 
    static final String ID = "Id";
 
@@ -160,6 +160,8 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    private static final String EXO_OWNER = "Owner";
 
    private static final String EXO_PERMISSIONS = "Perms";
+
+   private static final String SEQUENCE = "Seq";
 
    private static final Map<String, String> MAIN_PROPERTIES;
 
@@ -234,19 +236,22 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
 
    private boolean closed;
 
-   private boolean autoCommit;
+   private final boolean autoCommit;
+
+   private final boolean useSequenceForOrderNumber;
 
    /**
     * Spool config
     */
    private final SpoolConfig spoolConfig;
 
-   MXWorkspaceStorageConnection(DB db, String collectionName, boolean readOnly,
-      ValueStoragePluginProvider valueStorageProvider, SpoolConfig spoolConfig)
+   MXWorkspaceStorageConnection(DB db, String collectionName, boolean readOnly, boolean autoCommit,
+      boolean useSequenceForOrderNumber, ValueStoragePluginProvider valueStorageProvider, SpoolConfig spoolConfig)
    {
       this.db = db;
       this.collection = db.getCollection(collectionName);
       this.readOnly = readOnly;
+      db.requestStart();
       db.requestEnsureConnection();
       if (readOnly)
       {
@@ -254,9 +259,10 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       }
       else
       {
-         autoCommit = false;
          beginTransaction();
       }
+      this.autoCommit = autoCommit;
+      this.useSequenceForOrderNumber = useSequenceForOrderNumber;
       this.valueStorageProvider = valueStorageProvider;
       this.spoolConfig = spoolConfig;
       this.valueChanges = new ArrayList<ValueIOChannel>();
@@ -1124,6 +1130,16 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    public int getLastOrderNumber(NodeData parent) throws RepositoryException
    {
       checkIfOpened();
+      if (useSequenceForOrderNumber)
+      {
+         BasicDBObject query = new BasicDBObject(ID, Constants.ROOT_UUID);
+         BasicDBObject fields = new BasicDBObject(SEQUENCE, Boolean.TRUE);
+         BasicDBObject update = new BasicDBObject("$inc", new BasicDBObject(SEQUENCE, 1));
+         DBObject result = collection.findAndModify(query, fields, null, false, update, true, false);
+         if (result == null)
+            return -1;
+         return (Integer)result.get(SEQUENCE);
+      }
       BasicDBObject query = new BasicDBObject(PARENT_ID, parent.getIdentifier()).append(IS_NODE, Boolean.TRUE);
       DBCursor cursor =
          collection.find(query, new BasicDBObject(ORDER_NUMBER, Boolean.TRUE))

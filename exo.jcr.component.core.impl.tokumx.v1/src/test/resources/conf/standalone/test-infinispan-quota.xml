@@ -40,19 +40,10 @@
       <eviction strategy="LRU" threadPolicy="DEFAULT" maxEntries="100000"/>
 
       <loaders passivation="false" shared="true" preload="true">
-        <store class="org.exoplatform.services.jcr.infinispan.JdbcBinaryCacheStore" fetchPersistentState="true" ignoreModifications="false" purgeOnStartup="false">
+        <store class="org.exoplatform.services.jcr.tokumx.TokuMXCacheStore" fetchPersistentState="true" ignoreModifications="false" purgeOnStartup="false">
           <properties>
-             <property name="bucketTableNamePrefix" value="${infinispan-cl-cache.jdbc.table.name}"/>
-             <property name="idColumnName" value="${infinispan-cl-cache.jdbc.id.column}"/>
-             <property name="dataColumnName" value="${infinispan-cl-cache.jdbc.data.column}"/>
-             <property name="timestampColumnName" value="${infinispan-cl-cache.jdbc.timestamp.column}"/>
-             <property name="idColumnType" value="${infinispan-cl-cache.jdbc.id.type}"/>
-             <property name="dataColumnType" value="${infinispan-cl-cache.jdbc.data.type}"/>
-             <property name="timestampColumnType" value="${infinispan-cl-cache.jdbc.timestamp.type}"/>
-             <property name="dropTableOnExit" value="${infinispan-cl-cache.jdbc.table.drop}"/>
-             <property name="createTableOnStart" value="${infinispan-cl-cache.jdbc.table.create}"/>
-             <property name="connectionFactoryClass" value="${infinispan-cl-cache.jdbc.connectionFactory}"/>
-             <property name="datasourceJndiLocation" value="${infinispan-cl-cache.jdbc.datasource}"/>
+             <property name="connectionURI" value="${infinispan-cl-cache.mongodb.connection.uri}"/>
+             <property name="collectionName" value="${infinispan-cl-cache.mongodb.collection.name}"/>
           </properties>
           <async enabled="false"/>
         </store>

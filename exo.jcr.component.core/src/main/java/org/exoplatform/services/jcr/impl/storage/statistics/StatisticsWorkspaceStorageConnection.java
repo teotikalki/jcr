@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see&lt;http://www.gnu.org/licenses/&gt;.
  */
-package org.exoplatform.services.jcr.impl.storage.jdbc.statistics;
+package org.exoplatform.services.jcr.impl.storage.statistics;
 
 import org.exoplatform.services.jcr.datamodel.ItemData;
 import org.exoplatform.services.jcr.datamodel.ItemType;
@@ -24,7 +24,6 @@ import org.exoplatform.services.jcr.datamodel.QPathEntry;
 import org.exoplatform.services.jcr.impl.core.itemfilters.QPathEntryFilter;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.ACLHolder;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.ChangedSizeHandler;
-import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 import org.exoplatform.services.jcr.statistics.JCRStatisticsManager;
 import org.exoplatform.services.jcr.statistics.Statistics;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
@@ -39,18 +38,18 @@ import javax.jcr.RepositoryException;
 /**
  * This class is used to give statistics about the time spent in the database access layer.  
  * To activate the statistics, set the JVM parameter called
- * "JDBCWorkspaceDataContainer.statistics.enabled" to <code>true</code>.
+ * <i>WorkspaceDataContainer.statistics.enabled</i> to <code>true</code>.
  * 
  * Created by The eXo Platform SAS
  * Author : Nicolas Filotto 
  *          nicolas.filotto@exoplatform.com
  */
-public class StatisticsJDBCStorageConnection implements WorkspaceStorageConnection
+public class StatisticsWorkspaceStorageConnection implements WorkspaceStorageConnection
 {
    /**
-    * The category of the statistics of the JDBCStorageConnection
+    * The category of the statistics of the WorkspaceStorageConnection
     */
-   public static final String CATEGORY = "JDBCStorageConnection";
+   public static final String CATEGORY = "WorkspaceStorageConnection";
 
    /**
     * The description of the statistics corresponding to the method 
@@ -271,14 +270,6 @@ public class StatisticsJDBCStorageConnection implements WorkspaceStorageConnecti
       ALL_STATISTICS.put(GET_NODE_DATA_SIZE, new Statistics(null, GET_NODE_DATA_SIZE));
    }
 
-   static
-   {
-      if (JDBCWorkspaceDataContainer.STATISTICS_ENABLED)
-      {
-         JCRStatisticsManager.registerStatistics(CATEGORY, GLOBAL_STATISTICS, ALL_STATISTICS);
-      }
-   }
-
    /**
     * The nested {@link WorkspaceStorageConnection}
     */
@@ -287,7 +278,7 @@ public class StatisticsJDBCStorageConnection implements WorkspaceStorageConnecti
    /**
     * The default constructor
     */
-   public StatisticsJDBCStorageConnection(WorkspaceStorageConnection wcs)
+   public StatisticsWorkspaceStorageConnection(WorkspaceStorageConnection wcs)
    {
       this.wcs = wcs;
    }
@@ -792,5 +783,22 @@ public class StatisticsJDBCStorageConnection implements WorkspaceStorageConnecti
       {
          s.end();
       }
+   }
+
+   /**
+    * Register a new category of statistics to manage.
+    * @param category the name of the category of statistics to register.
+    */
+   public static void registerStatistics(String category)
+   {
+      JCRStatisticsManager.registerStatistics(category, GLOBAL_STATISTICS, ALL_STATISTICS);
+   }
+
+   /**
+    * Register a new category of statistics to manage using the default category name.
+    */
+   public static void registerStatistics()
+   {
+      JCRStatisticsManager.registerStatistics(CATEGORY, GLOBAL_STATISTICS, ALL_STATISTICS);
    }
 }

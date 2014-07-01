@@ -138,7 +138,7 @@ public class ISPNQuotaManagerImpl extends BaseQuotaManager
     * Returns prepared {@link MappedParametrizedObjectEntry} instance with parameters
     * needed to create ISPN cache and cache store.
     */
-   private MappedParametrizedObjectEntry prepareISPNParameters(InitParams initParams) throws RepositoryException
+   protected MappedParametrizedObjectEntry prepareISPNParameters(InitParams initParams) throws RepositoryException
    {
       MappedParametrizedObjectEntry qmEntry = new QuotaManagerEntry();
 
@@ -170,7 +170,7 @@ public class ISPNQuotaManagerImpl extends BaseQuotaManager
       qmEntry.putParameterValue(JGROUPS_CONFIGURATION, DEFAULT_JGROUPS_CONFIGURATION);
    }
 
-   private void putConfiguredValues(InitParams initParams, MappedParametrizedObjectEntry qmEntry)
+   protected void putConfiguredValues(InitParams initParams, MappedParametrizedObjectEntry qmEntry)
    {
       PropertiesParam props = initParams.getPropertiesParam(BaseQuotaManager.CACHE_CONFIGURATION_PROPERTIES_PARAM);
       for (Iterator<Property> iter = props.getPropertyIterator(); iter.hasNext();)
@@ -180,7 +180,7 @@ public class ISPNQuotaManagerImpl extends BaseQuotaManager
       }
    }
 
-   private class QuotaManagerEntry extends MappedParametrizedObjectEntry
+   public static class QuotaManagerEntry extends MappedParametrizedObjectEntry
    {
    }
 }

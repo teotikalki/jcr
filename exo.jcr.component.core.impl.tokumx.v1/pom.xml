@@ -36,6 +36,8 @@
       <value.storage.enabled>true</value.storage.enabled>
       <statistics.enabled>false</statistics.enabled>
       <batch.size>-1</batch.size>
+      <use.sequence>true</use.sequence>
+      <auto.commit>false</auto.commit>
       <use.distributed.cache>false</use.distributed.cache>
       <properties.url>classpath:/conf/standalone/config.properties</properties.url>
       <test.cache.all>**/persistent/cache/**</test.cache.all>
@@ -134,6 +136,7 @@
                <include>**/*.dtd</include>
                <include>**/*.policy</include>
                <include>**/*.cnd</include>
+               <include>META-INF/services/*</include>
             </includes>
          </testResource>
       </testResources>
@@ -160,11 +163,19 @@
                      <value>${value.storage.enabled}</value>
                   </property>
                   <property>
+                     <name>use-sequence</name>
+                     <value>${use.sequence}</value>
+                  </property>
+                  <property>
+                     <name>auto-commit</name>
+                     <value>${auto.commit}</value>
+                  </property>
+                  <property>
                      <name>use-distributed-cache</name>
                      <value>${use.distributed.cache}</value>
                   </property>
                   <property>
-                      <name>JDBCWorkspaceDataContainer.statistics.enabled</name>
+                      <name>WorkspaceDataContainer.statistics.enabled</name>
                       <value>${statistics.enabled}</value>
                   </property>
                   <property>
@@ -346,6 +357,14 @@
                            <name>value-storage-enabled</name>
                            <value>${value.storage.enabled}</value>
                         </property>
+                        <property>
+                           <name>use-sequence</name>
+                           <value>${use.sequence}</value>
+                         </property>
+                         <property>
+                           <name>auto-commit</name>
+                           <value>${auto.commit}</value>
+                         </property>
                          <property>
                            <name>use-distributed-cache</name>
                            <value>${use.distributed.cache}</value>
@@ -359,7 +378,7 @@
                               org.apache.jackrabbit.test.api.nodetype.PredefinedNodeTypeTest#testVersion</value>
                         </property>
                         <property>
-                           <name>JDBCWorkspaceDataContainer.statistics.enabled</name>
+                           <name>WorkspaceDataContainer.statistics.enabled</name>
                            <value>${statistics.enabled}</value>
                         </property>
                         <property>
@@ -434,6 +453,14 @@
                             <value>${value.storage.enabled}</value>
                         </property>
                         <property>
+                           <name>use-sequence</name>
+                           <value>${use.sequence}</value>
+                         </property>
+                         <property>
+                           <name>auto-commit</name>
+                           <value>${auto.commit}</value>
+                         </property>
+                        <property>
                            <name>use-distributed-cache</name>
                            <value>${use.distributed.cache}</value>
                         </property>
@@ -446,7 +473,7 @@
                               org.apache.jackrabbit.test.api.nodetype.PredefinedNodeTypeTest#testVersion</value>
                         </property>
                         <property>
-                           <name>JDBCWorkspaceDataContainer.statistics.enabled</name>
+                           <name>WorkspaceDataContainer.statistics.enabled</name>
                            <value>${statistics.enabled}</value>
                         </property>
                         <property>

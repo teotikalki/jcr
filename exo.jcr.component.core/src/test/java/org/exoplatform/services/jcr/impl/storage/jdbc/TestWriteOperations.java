@@ -25,12 +25,13 @@ import org.exoplatform.services.jcr.core.WorkspaceContainerFacade;
 import org.exoplatform.services.jcr.impl.core.PropertyImpl;
 import org.exoplatform.services.jcr.impl.core.SessionImpl;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.TestCleanableFileStreamValueData;
-import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
+import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
 import org.exoplatform.services.jcr.util.TesterConfigurationHelper;
 
 import javax.jcr.Node;
 import javax.jcr.Session;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 
@@ -85,9 +86,9 @@ public class TestWriteOperations extends JcrAPIBaseTest
       JDBCWorkspaceDataContainer dataContainer =
          (JDBCWorkspaceDataContainer)wsc.getComponent(JDBCWorkspaceDataContainer.class);
       WorkspaceStorageConnection wscon = dataContainer.openConnection();
-      if (wscon instanceof StatisticsJDBCStorageConnection)
+      if (wscon instanceof StatisticsWorkspaceStorageConnection)
       {
-         wscon = ((StatisticsJDBCStorageConnection)wscon).getNestedWorkspaceStorageConnection();
+         wscon = ((StatisticsWorkspaceStorageConnection)wscon).getNestedWorkspaceStorageConnection();
       }
       JDBCStorageConnection con = (JDBCStorageConnection) wscon;
       File file =
