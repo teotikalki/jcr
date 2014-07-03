@@ -295,7 +295,6 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       SpoolConfig spoolConfig)
    {
       this.db = db;
-      this.collection = db.getCollection(collectionName);
       this.readOnly = readOnly;
       db.requestStart();
       db.requestEnsureConnection();
@@ -307,6 +306,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       {
          beginTransaction();
       }
+      this.collection = db.getCollection(collectionName);
       this.autoCommit = autoCommit;
       this.useSequenceForOrderNumber = useSequenceForOrderNumber;
       this.batchSize = batchSize;

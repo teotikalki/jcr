@@ -21,17 +21,28 @@ package org.exoplatform.services.jcr.impl.storage.tokumx;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.PrivilegedSystemHelper;
+import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.commons.utils.SecurityHelper;
 import org.exoplatform.services.jcr.config.RepositoryConfigurationException;
 import org.exoplatform.services.jcr.config.RepositoryEntry;
 import org.exoplatform.services.jcr.config.SimpleParameterEntry;
+import org.exoplatform.services.jcr.config.ValueStorageEntry;
 import org.exoplatform.services.jcr.config.WorkspaceEntry;
+import org.exoplatform.services.jcr.core.security.JCRRuntimePermissions;
 import org.exoplatform.services.jcr.impl.Constants;
+import org.exoplatform.services.jcr.impl.backup.BackupException;
+import org.exoplatform.services.jcr.impl.backup.Backupable;
+import org.exoplatform.services.jcr.impl.backup.ComplexDataRestore;
+import org.exoplatform.services.jcr.impl.backup.DataRestore;
+import org.exoplatform.services.jcr.impl.backup.rdbms.DataRestoreContext;
+import org.exoplatform.services.jcr.impl.backup.rdbms.DirectoryRestore;
 import org.exoplatform.services.jcr.impl.core.lock.cacheable.AbstractCacheableLockManager;
 import org.exoplatform.services.jcr.impl.core.query.NodeDataIndexingIterator;
 import org.exoplatform.services.jcr.impl.core.query.Reindexable;
@@ -39,6 +50,8 @@ import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.WorkspaceDataContainerBase;
 import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.impl.storage.tokumx.indexing.MXNodeDataIndexingIterator;
+import org.exoplatform.services.jcr.impl.storage.value.fs.FileValueStorage;
+import org.exoplatform.services.jcr.impl.util.io.DirectoryHelper;
 import org.exoplatform.services.jcr.impl.util.io.FileCleanerHolder;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
 import org.exoplatform.services.jcr.storage.value.ValueStoragePluginProvider;
@@ -50,8 +63,15 @@ import org.picocontainer.Startable;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.zip.ZipInputStream;
 
 import javax.jcr.RepositoryException;
 import javax.naming.NamingException;
@@ -61,7 +81,7 @@ import javax.naming.NamingException;
  * @version $Id$
  *
  */
-public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase implements Startable, Reindexable
+public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase implements Startable, Reindexable, Backupable
 {
 
    private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceDataContainer");
@@ -80,6 +100,49 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
          LOG.info("The statistics of the component MXWorkspaceDataContainer has been enabled");
       }
    }
+
+   /**
+    * The maximum possible batch size.
+    */
+   private final int MAXIMUM_BATCH_SIZE = 1000;
+
+   /**
+    *  Name of fetch size property parameter in configuration.
+    */
+   private static final String FULL_BACKUP_JOB_FETCH_SIZE = "exo.jcr.component.ext.FullBackupJob.fetch-size";
+
+   /**
+    * The number of rows that should be fetched from the database
+    */
+   private static final int FETCH_SIZE;
+   static
+   {
+      String size = PropertyManager.getProperty(FULL_BACKUP_JOB_FETCH_SIZE);
+      int value = 1000;
+      if (size != null)
+      {
+         try
+         {
+            value = Integer.valueOf(size);
+         }
+         catch (NumberFormatException e)
+         {
+            LOG.warn("The value of the property '" + FULL_BACKUP_JOB_FETCH_SIZE
+               + "' must be an integer, the default value will be used.");
+         }
+      }
+      FETCH_SIZE = value;
+   }
+
+   /**
+    * Suffix for content zip file.
+    */
+   public static final String CONTENT_ZIP_FILE = "dump.zip";
+
+   /**
+    * The name of the content file.
+    */
+   public static final String CONTENT_FILE = "content.dat";
 
    /**
     * Suffix used in collection names
@@ -259,51 +322,76 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
          db.requestEnsureConnection();
          if (!db.collectionExists(collectionName))
          {
-            LOG.debug("The collection '{}' doesn't exist so it will be created", collectionName);
-            DBCollection collection = db.createCollection(collectionName, new BasicDBObject());
-            LOG.debug("The collection '{}' has successfully been created", collectionName);
-            collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.ID, 1), new BasicDBObject("unique",
-               Boolean.TRUE).append("clustering", Boolean.TRUE));
-            collection.ensureIndex(
-               new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1)
-                  .append(MXWorkspaceStorageConnection.NAME, 1).append(MXWorkspaceStorageConnection.INDEX, 1)
-                  .append(MXWorkspaceStorageConnection.IS_NODE, -1).append(MXWorkspaceStorageConnection.VERSION, -1),
-               new BasicDBObject("unique", Boolean.TRUE));
-            collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1).append(
-               MXWorkspaceStorageConnection.IS_NODE, 1).append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1));
-            collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.IS_NODE, 1).append(
-               MXWorkspaceStorageConnection.ID, 1));
-            collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.VALUES + "."
-               + MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, 1).append(MXWorkspaceStorageConnection.ID, 1),
-               new BasicDBObject("sparse", Boolean.TRUE));
-            LOG.debug("The indexes of the collection '{}' has successfully created", collectionName);
-            if (!autoCommit)
-            {
-               // A workaround to prevent getting : Cannot transition from not multi key to multi key in multi statement transaction
-               // We need to initialize the multi-key index outside a multi-statement transaction
-               BasicDBObject node =
-                  new BasicDBObject(MXWorkspaceStorageConnection.ID, Constants.ROOT_PARENT_UUID)
-                     .append(MXWorkspaceStorageConnection.PARENT_ID, Constants.ROOT_PARENT_UUID)
-                     .append(MXWorkspaceStorageConnection.NAME, Constants.ROOT_PARENT_UUID)
-                     .append(MXWorkspaceStorageConnection.INDEX, 1)
-                     .append(MXWorkspaceStorageConnection.IS_NODE, Boolean.TRUE)
-                     .append(MXWorkspaceStorageConnection.VERSION, 1)
-                     .append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1)
-                     .append(
-                        MXWorkspaceStorageConnection.VALUES,
-                        Arrays.asList(new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo"),
-                           new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo2")));
-               collection.insert(node);
-               LOG.debug("The fake node has been added successfully to the collection '{}'", collectionName);
-               collection.remove(node);
-               LOG.debug("The fake node has been removed successfully from the collection '{}'", collectionName);
-            }
+            DBCollection collection = createCollection(db);
+            addIndexes(collection);
+            initCollection(collection);
          }
       }
       finally
       {
          db.requestDone();
       }
+   }
+
+   /**
+    * Initializes the collection
+    */
+   private void initCollection(DBCollection collection)
+   {
+      if (!autoCommit)
+      {
+         // A workaround to prevent getting : Cannot transition from not multi key to multi key in multi statement transaction
+         // We need to initialize the multi-key index outside a multi-statement transaction
+         BasicDBObject node =
+            new BasicDBObject(MXWorkspaceStorageConnection.ID, Constants.ROOT_PARENT_UUID)
+               .append(MXWorkspaceStorageConnection.PARENT_ID, Constants.ROOT_PARENT_UUID)
+               .append(MXWorkspaceStorageConnection.NAME, Constants.ROOT_PARENT_UUID)
+               .append(MXWorkspaceStorageConnection.INDEX, 1)
+               .append(MXWorkspaceStorageConnection.IS_NODE, Boolean.TRUE)
+               .append(MXWorkspaceStorageConnection.VERSION, 1)
+               .append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1)
+               .append(
+                  MXWorkspaceStorageConnection.VALUES,
+                  Arrays.asList(new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo"),
+                     new BasicDBObject(MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, "foo2")));
+         collection.insert(node);
+         LOG.debug("The fake node has been added successfully to the collection '{}'", collectionName);
+         collection.remove(node);
+         LOG.debug("The fake node has been removed successfully from the collection '{}'", collectionName);
+      }
+   }
+
+   /**
+    * Creates the collection and returns it
+    */
+   private DBCollection createCollection(DB db)
+   {
+      LOG.debug("The collection '{}' doesn't exist so it will be created", collectionName);
+      DBCollection collection = db.createCollection(collectionName, new BasicDBObject());
+      return collection;
+   }
+
+   /**
+    * Adds all the indexes to the collection
+    */
+   private void addIndexes(DBCollection collection)
+   {
+      LOG.debug("The collection '{}' has successfully been created", collectionName);
+      collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.ID, 1), new BasicDBObject("unique",
+         Boolean.TRUE).append("clustering", Boolean.TRUE));
+      collection.ensureIndex(
+         new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1)
+            .append(MXWorkspaceStorageConnection.NAME, 1).append(MXWorkspaceStorageConnection.INDEX, 1)
+            .append(MXWorkspaceStorageConnection.IS_NODE, -1).append(MXWorkspaceStorageConnection.VERSION, -1),
+         new BasicDBObject("unique", Boolean.TRUE));
+      collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1).append(
+         MXWorkspaceStorageConnection.IS_NODE, 1).append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1));
+      collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.IS_NODE, 1).append(
+         MXWorkspaceStorageConnection.ID, 1));
+      collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.VALUES + "."
+         + MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, 1).append(MXWorkspaceStorageConnection.ID, 1),
+         new BasicDBObject("sparse", Boolean.TRUE));
+      LOG.debug("The indexes of the collection '{}' has successfully created", collectionName);
    }
 
    /**
@@ -490,4 +578,348 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
       }
    }
 
+   /**
+    * {@inheritDoc}
+    */
+   public void backup(final File storageDir) throws BackupException
+   {
+      SecurityManager security = System.getSecurityManager();
+      if (security != null)
+      {
+         security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
+      }
+      DB db = getDB();
+      db.requestStart();
+      ObjectOutputStream oos = null;
+      DBCursor cursor = null;
+      final File file = new File(storageDir, CONTENT_FILE);
+      try
+      {
+         db.requestEnsureConnection();
+         DBCollection collection = db.getCollection(collectionName);
+         cursor = collection.find().batchSize(FETCH_SIZE);
+         oos = new ObjectOutputStream(PrivilegedFileHelper.fileOutputStream(file));
+         while (cursor.hasNext())
+         {
+            DBObject o = cursor.next();
+            oos.writeBoolean(true);
+            oos.writeObject(o);
+         }
+         oos.writeBoolean(false);
+      }
+      catch (Exception e)
+      {
+         throw new BackupException(e);
+      }
+      finally
+      {
+         try
+         {
+            if (cursor != null)
+            {
+               cursor.close();
+            }
+         }
+         catch (Exception e)
+         {
+            LOG.warn("Could not close the cursor: " + e.getMessage());
+         }
+         try
+         {
+            if (oos != null)
+            {
+               oos.close();
+            }
+         }
+         catch (IOException e)
+         {
+            LOG.warn("Could not close the object output stream: " + e.getMessage());
+         }
+         db.requestDone();
+      }
+      try
+      {
+         SecurityHelper.doPrivilegedExceptionAction(new PrivilegedExceptionAction<Void>()
+         {
+            public Void run() throws RepositoryConfigurationException, IOException
+            {
+               // Zip the file
+               DirectoryHelper.compressDirectory(file, new File(storageDir, CONTENT_ZIP_FILE));
+               // Remove the file
+               if (!file.delete())
+                  spoolConfig.fileCleaner.addFile(file);
+               // backup value storage
+               if (wsConfig.getContainer().getValueStorages() != null)
+               {
+                  for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
+                  {
+                     File srcDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
+
+                     if (!srcDir.exists())
+                     {
+                        throw new IOException("Can't backup value storage. Directory " + srcDir.getName()
+                           + " doesn't exists");
+                     }
+                     else
+                     {
+                        File zipFile = new File(storageDir, "values-" + valueStorage.getId() + ".zip");
+                        DirectoryHelper.compressDirectory(srcDir, zipFile);
+                     }
+                  }
+               }
+               return null;
+            }
+         });
+      }
+      catch (PrivilegedActionException e)
+      {
+         throw new BackupException(e);
+      }
+      catch (Exception e)
+      {
+         throw new BackupException(e);
+      }
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public void clean() throws BackupException
+   {
+      SecurityManager security = System.getSecurityManager();
+      if (security != null)
+      {
+         security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
+      }
+      LOG.info("Start to clean the data of the workspace '" + wsConfig.getName() + "'");
+      DB db = getDB();
+      db.requestStart();
+      try
+      {
+         db.requestEnsureConnection();
+         if (db.collectionExists(collectionName))
+         {
+            LOG.info("Drop the collection '" + collectionName + "'");
+            db.getCollection(collectionName).drop();
+         }
+      }
+      catch (Exception e)
+      {
+         throw new BackupException(e);
+      }
+      finally
+      {
+         db.requestDone();
+      }
+      initDatabase();
+      cleanVS();
+   }
+
+   /**
+    * @throws BackupException
+    */
+   private void cleanVS() throws BackupException
+   {
+      try
+      {
+         if (wsConfig.getContainer().getValueStorages() != null)
+         {
+            SecurityHelper.doPrivilegedExceptionAction(new PrivilegedExceptionAction<Void>()
+            {
+               public Void run() throws IOException, RepositoryConfigurationException
+               {
+                  for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
+                  {
+                     File valueStorageDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
+                     if (valueStorageDir.exists())
+                     {
+                        DirectoryHelper.removeDirectory(valueStorageDir);
+                     }
+                  }
+
+                  return null;
+               }
+            });
+         }
+      }
+      catch (PrivilegedActionException e)
+      {
+         throw new BackupException(e);
+      }
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public DataRestore getDataRestorer(DataRestoreContext context) throws BackupException
+   {
+      try
+      {
+         File storageDir = (File)context.getObject(DataRestoreContext.STORAGE_DIR);
+         List<DataRestore> restorers = new ArrayList<DataRestore>();
+         restorers.add(new MXDataRestore(storageDir));
+         if (wsConfig.getContainer().getValueStorages() != null)
+         {
+            List<File> dataDirsList = initDataDirs();
+            List<File> backupDirsList = initBackupDirs(storageDir);
+
+            restorers.add(new DirectoryRestore(dataDirsList, backupDirsList));
+         }
+
+         return new ComplexDataRestore(restorers);
+      }
+      catch (Exception e)
+      {
+         throw new BackupException(e);
+      }
+   }
+
+   private List<File> initBackupDirs(File storageDir) throws RepositoryConfigurationException
+   {
+      List<File> backupDirsList = new ArrayList<File>();
+
+      for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
+      {
+         File zipFile = new File(storageDir, "values-" + valueStorage.getId() + ".zip");
+         if (PrivilegedFileHelper.exists(zipFile))
+         {
+            backupDirsList.add(zipFile);
+         }
+         else
+         {
+            // try to check if we have deal with old backup format
+            zipFile = new File(storageDir, "values/" + valueStorage.getId());
+            if (PrivilegedFileHelper.exists(zipFile))
+            {
+               backupDirsList.add(zipFile);
+            }
+            else
+            {
+               throw new RepositoryConfigurationException("There is no backup data for value storage with id "
+                  + valueStorage.getId());
+            }
+         }
+      }
+
+      return backupDirsList;
+   }
+
+   private List<File> initDataDirs() throws RepositoryConfigurationException
+   {
+      List<File> dataDirsList = new ArrayList<File>();
+
+      for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
+      {
+         File dataDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
+         dataDirsList.add(dataDir);
+      }
+
+      return dataDirsList;
+   }
+
+   private class MXDataRestore implements DataRestore
+   {
+      private final File storageDir;
+
+      public MXDataRestore(File storageDir)
+      {
+         this.storageDir = storageDir;
+         database.requestStart();
+         database.requestEnsureConnection();
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      public void clean() throws BackupException
+      {
+         if (database.collectionExists(collectionName))
+         {
+            DBCollection collection = database.getCollection(collectionName);
+            LOG.info("Drop the collection '" + collectionName + "'");
+            collection.drop();
+         }
+         createCollection(database);
+         LOG.info("Drop the VS of the workspace '" + wsConfig.getName() + "'");
+         cleanVS();
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      public void restore() throws BackupException
+      {
+         SecurityManager security = System.getSecurityManager();
+         if (security != null)
+         {
+            security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
+         }
+         ObjectInputStream ois = null;
+         try
+         {
+            DBCollection collection = database.getCollection(collectionName);
+
+            ZipInputStream zis = PrivilegedFileHelper.zipInputStream(new File(storageDir, CONTENT_ZIP_FILE));
+            while (!zis.getNextEntry().getName().endsWith(CONTENT_FILE));
+            ois = new ObjectInputStream(zis);
+            List<DBObject> objects = new ArrayList<DBObject>();
+            while (ois.readBoolean())
+            {
+               DBObject o = (DBObject)ois.readObject();
+               objects.add(o);
+               if (objects.size() >= MAXIMUM_BATCH_SIZE)
+               {
+                  collection.insert(objects);
+                  objects.clear();
+               }
+            }
+            if (!objects.isEmpty())
+               collection.insert(objects);
+            addIndexes(collection);
+            initCollection(collection);
+         }
+         catch (Exception e)
+         {
+            throw new BackupException(e);
+         }
+         finally
+         {
+            if (ois != null)
+            {
+               try
+               {
+                  ois.close();
+               }
+               catch (IOException e)
+               {
+                  LOG.warn("Could not close the object input stream: " + e.getMessage());
+               }
+            }
+         }
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      public void commit() throws BackupException
+      {
+         // We do nothing as we want to use the auto commit mode
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      public void rollback() throws BackupException
+      {
+         // We do nothing as we want to use the auto commit mode
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      public void close() throws BackupException
+      {
+         database.requestDone();
+      }
+   }
 }
