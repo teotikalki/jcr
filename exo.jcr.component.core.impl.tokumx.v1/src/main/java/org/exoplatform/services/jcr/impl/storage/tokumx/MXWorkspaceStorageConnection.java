@@ -43,6 +43,7 @@ import org.exoplatform.services.jcr.datamodel.InternalQName;
 import org.exoplatform.services.jcr.datamodel.ItemData;
 import org.exoplatform.services.jcr.datamodel.ItemType;
 import org.exoplatform.services.jcr.datamodel.NodeData;
+import org.exoplatform.services.jcr.datamodel.NodeDataIndexing;
 import org.exoplatform.services.jcr.datamodel.PropertyData;
 import org.exoplatform.services.jcr.datamodel.QPath;
 import org.exoplatform.services.jcr.datamodel.QPathEntry;
@@ -2472,10 +2473,98 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       currentItems.add(item);
       if (currentDBObjects.put(item.getIdentifier(), object) != null)
       {
-         throw new JCRInvalidItemStateException("Could not add item Path: "
-                  + item.getQPath().getAsString() + ", ID: " + item.getIdentifier() + ", ParentID: "
-                  + item.getParentIdentifier() + ". Cause >>>> Item already exists.", item.getIdentifier(),
-                  ItemState.ADDED);
+         throw new JCRInvalidItemStateException("Could not add item Path: " + item.getQPath().getAsString() + ", ID: "
+            + item.getIdentifier() + ", ParentID: " + item.getParentIdentifier() + ". Cause >>>> Item already exists.",
+            item.getIdentifier(), ItemState.ADDED);
       }
+   }
+
+   /**
+    * Returns from storage the next page of nodes and its properties.
+    * @throws RepositoryException if an error occurs
+    */
+   public List<NodeDataIndexing> getNodesAndProperties(String lastNodeId, int offset, int limit)
+      throws RepositoryException
+   {
+      checkIfOpened();
+      // First we get the nodes
+      BasicDBObject queryNodes = new BasicDBObject(IS_NODE, Boolean.TRUE);
+      if (lastNodeId != null)
+      {
+         queryNodes.append(ID, new BasicDBObject("$gt", lastNodeId));
+      }
+      DBCursor cursorGetNodes = collection.find(queryNodes).skip(offset).limit(limit);
+      Map<String, NodeData> nodes = new LinkedHashMap<String, NodeData>();
+      try
+      {
+         while (cursorGetNodes.hasNext())
+         {
+            DBObject node = cursorGetNodes.next();
+            NodeData data = (NodeData)itemData(null, node, true, null);
+            nodes.put(data.getIdentifier(), data);
+         }
+      }
+      catch (RepositoryException e)
+      {
+         throw e;
+      }
+      catch (Exception e)
+      {
+         throw new RepositoryException(e);
+      }
+      finally
+      {
+         cursorGetNodes.close();
+      }
+      if (nodes.isEmpty())
+         return Collections.emptyList();
+      // Then we get the properties of all the nodes
+      BasicDBObject queryProperties = new BasicDBObject(PARENT_ID, new BasicDBObject("$in", nodes.keySet()));
+      queryProperties.append(IS_NODE, Boolean.FALSE);
+      DBCursor cursorGetProperties = collection.find(queryProperties);
+      Map<String, Map<String, PropertyData>> allProperties = new HashMap<String, Map<String, PropertyData>>();
+      try
+      {
+         while (cursorGetProperties.hasNext())
+         {
+            DBObject property = cursorGetProperties.next();
+            String cpid = (String)property.get(PARENT_ID);
+            NodeData parentData = nodes.get(cpid);
+            if (parentData == null)
+               throw new RepositoryException("Could not find the parent node " + cpid);
+            PropertyData data = (PropertyData)itemData(parentData.getQPath(), property, false, parentData.getACL());
+            Map<String, PropertyData> properties = allProperties.get(cpid);
+            if (properties == null)
+            {
+               properties = new HashMap<String, PropertyData>();
+               allProperties.put(cpid, properties);
+            }
+            String cname = (String)property.get(NAME);
+            properties.put(cname, data);
+         }
+      }
+      catch (RepositoryException e)
+      {
+         throw e;
+      }
+      catch (Exception e)
+      {
+         throw new RepositoryException(e);
+      }
+      finally
+      {
+         cursorGetProperties.close();
+      }
+      List<NodeDataIndexing> result = new ArrayList<NodeDataIndexing>();
+      for (Map.Entry<String, NodeData> entry : nodes.entrySet())
+      {
+         Map<String, PropertyData> properties = allProperties.get(entry.getKey());
+         result.add(new NodeDataIndexing(entry.getValue(), properties));
+      }
+      if (LOG.isTraceEnabled())
+      {
+         LOG.trace("getNodesAndProperties(%s, %s, %s) = %s elements", lastNodeId, offset, limit, result.size());
+      }
+      return result;
    }
 }

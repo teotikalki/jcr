@@ -560,21 +560,21 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
                   // traverse and index workspace
                   executeAndLog(new Start(Action.INTERNAL_TRANSACTION));
 
-                  // check if we have deal with RDBMS reindexing mechanism
-                  Reindexable rdbmsReindexableComponent =
+                  // check if we have deal with a batch reindexing mechanism
+                  Reindexable reindexableComponent =
                      (Reindexable)handler.getContext().getContainer().getComponent(Reindexable.class);
 
-                  Thread thread = createThreadFindNodesCount(rdbmsReindexableComponent);
+                  Thread thread = createThreadFindNodesCount(reindexableComponent);
                   thread.start();
 
                   long count;
 
-                  if (handler.isRDBMSReindexing() && rdbmsReindexableComponent != null
-                     && rdbmsReindexableComponent.isReindexingSupported())
+                  if (handler.isBatchReindexing() && reindexableComponent != null
+                     && reindexableComponent.isReindexingSupported())
                   {
                      count =
                         createIndex(
-                           rdbmsReindexableComponent.getNodeDataIndexingIterator(handler.getReindexingPageSize()),
+                           reindexableComponent.getNodeDataIndexingIterator(handler.getReindexingPageSize()),
                            indexingTree.getIndexingRoot());
                   }
                   else
@@ -645,15 +645,15 @@ public class MultiIndex implements IndexerIoModeListener, IndexUpdateMonitorList
 
       long count;
 
-      // check if we have deal with RDBMS reindexing mechanism
-      Reindexable rdbmsReindexableComponent =
+      // check if we have deal with a batch reindexing mechanism
+      Reindexable reindexableComponent =
          (Reindexable)handler.getContext().getContainer().getComponent(Reindexable.class);
 
-      if (handler.isRDBMSReindexing() && rdbmsReindexableComponent != null
-         && rdbmsReindexableComponent.isReindexingSupported())
+      if (handler.isBatchReindexing() && reindexableComponent != null
+         && reindexableComponent.isReindexingSupported())
       {
          count =
-            createIndex(rdbmsReindexableComponent.getNodeDataIndexingIterator(handler.getReindexingPageSize()),
+            createIndex(reindexableComponent.getNodeDataIndexingIterator(handler.getReindexingPageSize()),
                indexingTree.getIndexingRoot());
       }
       else

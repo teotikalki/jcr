@@ -107,7 +107,12 @@ public interface QueryHandlerParams
 
    public static final String PARAM_REINDEXING_PAGE_SIZE = "reindexing-page-size";
 
+   /**
+    * @deprecated use {@link #PARAM_BATCH_REINDEXING} instead
+    */
    public static final String PARAM_RDBMS_REINDEXING = "rdbms-reindexing";
+
+   public static final String PARAM_BATCH_REINDEXING = "batch-reindexing";
    
    public static final String PARAM_ASYNC_REINDEXING = "async-reindexing";
    

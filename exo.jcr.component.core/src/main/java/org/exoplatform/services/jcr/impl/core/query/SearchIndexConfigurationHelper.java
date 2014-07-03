@@ -64,6 +64,7 @@ public class SearchIndexConfigurationHelper
     * @param name
     * @param value
     */
+   @SuppressWarnings("deprecation")
    private void setParam(String name, String value)
    {
       if (QueryHandlerParams.PARAM_AUTO_REPAIR.equals(name))
@@ -192,7 +193,11 @@ public class SearchIndexConfigurationHelper
       }
       else if (QueryHandlerParams.PARAM_RDBMS_REINDEXING.equals(name))
       {
-         searchIndex.setRDBMSReindexing(Boolean.parseBoolean(value));
+         searchIndex.setBatchReindexing(Boolean.parseBoolean(value));
+      }
+      else if (QueryHandlerParams.PARAM_BATCH_REINDEXING.equals(name))
+      {
+         searchIndex.setBatchReindexing(Boolean.parseBoolean(value));
       }
       else if (QueryHandlerParams.PARAM_INDEX_RECOVERY_MODE.equals(name))
       {

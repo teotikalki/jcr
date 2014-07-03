@@ -188,9 +188,9 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    public static final int DEFAULT_REINDEXING_PAGE_SIZE = 100;
 
    /**
-    * The default value for {@link #rdbmsReindexing}.
+    * The default value for {@link #batchReindexing}.
     */
-   public static final boolean DEFAULT_RDBMS_REINDEXING = true;
+   public static final boolean DEFAULT_BATCH_REINDEXING = true;
 
    /**
     * The default value for {@link #asyncReindexing}.
@@ -529,9 +529,9 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    private int reindexingPageSize = DEFAULT_REINDEXING_PAGE_SIZE;
 
    /**
-    * Indicates what reindexing mechanism need to use. 
+    * Indicates what reindexing mechanism needs to be used. 
     */
-   private boolean rdbmsReindexing = DEFAULT_RDBMS_REINDEXING;
+   private boolean batchReindexing = DEFAULT_BATCH_REINDEXING;
 
    /** 
     * The way to create initial index.. 
@@ -3168,11 +3168,20 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    }
 
    /**
-    * @return the current value for rdbmsReindexing
+    * @return the current value for batchReindexing
+    * @deprecated use {@link #isBatchReindexing()} instead
     */
    public boolean isRDBMSReindexing()
    {
-      return rdbmsReindexing;
+      return isBatchReindexing();
+   }
+
+   /**
+    * @return the current value for batchReindexing
+    */
+   public boolean isBatchReindexing()
+   {
+      return batchReindexing;
    }
 
    /**
@@ -3235,14 +3244,26 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    }
 
    /**
-    * Set a new value for reindexingPageSize.
+    * Set a new value for batchReindexing.
+    * 
+    * @param rdbmsReindexing
+    *            the new value
+    * @deprecated {@link #setBatchReindexing(boolean)} instead
+    */
+   public void setRDBMSReindexing(boolean rdbmsReindexing)
+   {
+      setBatchReindexing(rdbmsReindexing);
+   }
+
+   /**
+    * Set a new value for batchReindexing.
     * 
     * @param reindexingPageSize
     *            the new value
     */
-   public void setRDBMSReindexing(boolean rdbmsReindexing)
+   public void setBatchReindexing(boolean batchReindexing)
    {
-      this.rdbmsReindexing = rdbmsReindexing;
+      this.batchReindexing = batchReindexing;
    }
 
    /**

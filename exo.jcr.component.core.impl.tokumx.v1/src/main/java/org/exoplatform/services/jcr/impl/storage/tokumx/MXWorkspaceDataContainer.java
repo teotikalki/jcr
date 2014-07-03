@@ -33,9 +33,12 @@ import org.exoplatform.services.jcr.config.SimpleParameterEntry;
 import org.exoplatform.services.jcr.config.WorkspaceEntry;
 import org.exoplatform.services.jcr.impl.Constants;
 import org.exoplatform.services.jcr.impl.core.lock.cacheable.AbstractCacheableLockManager;
+import org.exoplatform.services.jcr.impl.core.query.NodeDataIndexingIterator;
+import org.exoplatform.services.jcr.impl.core.query.Reindexable;
 import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.WorkspaceDataContainerBase;
 import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
+import org.exoplatform.services.jcr.impl.storage.tokumx.indexing.MXNodeDataIndexingIterator;
 import org.exoplatform.services.jcr.impl.util.io.FileCleanerHolder;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
 import org.exoplatform.services.jcr.storage.value.ValueStoragePluginProvider;
@@ -58,7 +61,7 @@ import javax.naming.NamingException;
  * @version $Id$
  *
  */
-public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase implements Startable
+public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase implements Startable, Reindexable
 {
 
    private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceDataContainer");
@@ -268,6 +271,8 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
                new BasicDBObject("unique", Boolean.TRUE));
             collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1).append(
                MXWorkspaceStorageConnection.IS_NODE, 1).append(MXWorkspaceStorageConnection.ORDER_NUMBER, 1));
+            collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.IS_NODE, 1).append(
+               MXWorkspaceStorageConnection.ID, 1));
             collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.VALUES + "."
                + MXWorkspaceStorageConnection.PROPERTY_TYPE_REFERENCE, 1).append(MXWorkspaceStorageConnection.ID, 1),
                new BasicDBObject("sparse", Boolean.TRUE));
@@ -451,6 +456,38 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    {
       if (client != null)
          client.close();
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public NodeDataIndexingIterator getNodeDataIndexingIterator(int pageSize) throws RepositoryException
+   {
+      return new MXNodeDataIndexingIterator(this, pageSize);
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public boolean isReindexingSupported()
+   {
+      return true;
+   }
+
+   /**
+    * {@inheritDoc}
+    */
+   public Long getNodesCount() throws RepositoryException
+   {
+      WorkspaceStorageConnection conn = openConnection(true);
+      try
+      {
+         return conn.getNodesCount();
+      }
+      finally
+      {
+         conn.close();
+      }
    }
 
 }

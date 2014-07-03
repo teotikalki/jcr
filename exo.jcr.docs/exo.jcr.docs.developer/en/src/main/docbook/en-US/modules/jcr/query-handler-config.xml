@@ -126,7 +126,7 @@
          &lt;property name="jgroups-configuration" value="udp-mux.xml" /&gt;
          &lt;property name="infinispan-cluster-name" value="JCR-cluster" /&gt;
          &lt;property name="max-volatile-time" value="60" /&gt;
-         &lt;property name="rdbms-reindexing" value="true" /&gt;
+         &lt;property name="batch-reindexing" value="true" /&gt;
          &lt;property name="reindexing-page-size" value="1000" /&gt;
          &lt;property name="index-recovery-mode" value="from-coordinator" /&gt;
          &lt;property name="index-recovery-filter" value="org.exoplatform.services.jcr.impl.core.query.lucene.DocNumberRecoveryFilter" /&gt;
@@ -201,10 +201,18 @@
             </row>
 
             <row>
+              <entry>batch-reindexing</entry>
+
+              <entry>Indicates whether the batch re-indexing mechanism must be
+              used, the default value is true.</entry>
+            </row>
+
+            <row>
               <entry>rdbms-reindexing</entry>
 
-              <entry>Indicates whether the rdbms re-indexing mechanism must be
-              used, the default value is true.</entry>
+              <entry>Indicates whether the batch re-indexing mechanism must be
+              used, the default value is true. This parameter is deprecated,
+              please use batch-reindexing instead.</entry>
             </row>
 
             <row>
@@ -315,7 +323,7 @@
       </table>
 
       <note>
-        <para>If you use postgreSQL and the parameter rdbms-reindexing is set
+        <para>If you use postgreSQL and the parameter batch-reindexing is set
         to true, the performances of the queries used while indexing can be
         improved by setting the parameter "enable_seqscan" to "off" or
         "default_statistics_target" to at least "50" in the configuration of
@@ -324,7 +332,7 @@
       </note>
 
       <note>
-        <para>If you use DB2 and the parameter rdbms-reindexing is set to
+        <para>If you use DB2 and the parameter batch-reindexing is set to
         true, the performance of the queiries used while indexing can be
         improved by making statisticks on tables by running "RUNSTATS ON TABLE
         &lt;scheme&gt;.&lt;table&gt; WITH DISTRIBUTION AND INDEXES ALL" for
@@ -345,7 +353,7 @@
       &lt;properties&gt;
          &lt;property name="index-dir" value="shareddir/index/db1/ws" /&gt;
          &lt;property name="max-volatile-time" value="60" /&gt;
-         &lt;property name="rdbms-reindexing" value="true" /&gt;
+         &lt;property name="batch-reindexing" value="true" /&gt;
          &lt;property name="reindexing-page-size" value="1000" /&gt;
          &lt;property name="index-recovery-mode" value="from-coordinator" /&gt;
       &lt;/properties&gt;
@@ -376,7 +384,7 @@
       &lt;property name="jgroups-configuration" value="udp-mux.xml" /&gt;
       &lt;property name="infinispan-cluster-name" value="JCR-cluster" /&gt;
       &lt;property name="max-volatile-time" value="60" /&gt;
-      &lt;property name="rdbms-reindexing" value="true" /&gt;
+      &lt;property name="batch-reindexing" value="true" /&gt;
       &lt;property name="reindexing-page-size" value="1000" /&gt;
       &lt;property name="index-recovery-mode" value="from-coordinator" /&gt;
    &lt;/properties&gt;
@@ -480,7 +488,7 @@ pid file = rsyncd.pid
       &lt;property name="jgroups-configuration" value="udp-mux.xml" /&gt;
       &lt;property name="infinispan-cluster-name" value="JCR-cluster" /&gt;
       &lt;property name="max-volatile-time" value="60" /&gt;
-      &lt;property name="rdbms-reindexing" value="true" /&gt;
+      &lt;property name="batch-reindexing" value="true" /&gt;
       &lt;property name="reindexing-page-size" value="1000" /&gt;
       &lt;property name="index-recovery-mode" value="from-coordinator" /&gt;
    &lt;/properties&gt;
@@ -642,9 +650,9 @@ pid file = rsyncd.pid
       <para>Common usecase for updating and re-creating the index is to stop
       the server and manually remove indexes for workspaces requiring it. When
       server will be started, missing indexes are automatically recovered by
-      re-indexing. JCR Supports direct RDBMS re-indexing, that usually is
+      re-indexing. JCR Supports direct batch re-indexing, that usually is
       faster than ordinary and can be configured via QueryHandler parameter
-      "rdbms-reindexing" set to "true" (for more information please refer to
+      "batch-reindexing" set to "true" (for more information please refer to
       "Query-handler configuration overview"). New feature to introduce is
       asynchronous indexing on startup. Usually startup is blocked until
       process is finished. Block can take any period of time, depending on
