@@ -99,6 +99,13 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    public final static String CONNECTION_URI = "connection-uri";
 
    /**
+    * Batch size value parameter name.
+    */
+   public final static String BATCH_SIZE = "batch-size";
+
+   public final static int DEFAULT_BATCHING_DISABLED = -1;
+
+   /**
     * Workspace configuration.
     */
    private final WorkspaceEntry wsConfig;
@@ -131,6 +138,11 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    private final boolean useSequenceForOrderNumber;
 
    /**
+    * Batch size.
+    */
+   public final int batchSize;
+
+   /**
     * The target database
     */
    private final DB database;
@@ -161,8 +173,7 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
 
       this.valueStorageProvider = valueStorageProvider;
 
-      //      this.containerConfig.batchSize =
-      //         wsConfig.getContainer().getParameterInteger(BATCH_SIZE, DEFAULT_BATCHING_DISABLED);
+      this.batchSize = wsConfig.getContainer().getParameterInteger(BATCH_SIZE, DEFAULT_BATCHING_DISABLED);
 
       // ------------- Spool config ------------------
       this.spoolConfig = new SpoolConfig(fileCleanerHolder.getFileCleaner());
@@ -322,7 +333,7 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    {
       WorkspaceStorageConnection con =
          new MXWorkspaceStorageConnection(getDB(), collectionName, readOnly, autoCommit, useSequenceForOrderNumber,
-            valueStorageProvider, spoolConfig);
+            batchSize, valueStorageProvider, spoolConfig);
       if (STATISTICS_ENABLED)
       {
          con = new StatisticsWorkspaceStorageConnection(con);

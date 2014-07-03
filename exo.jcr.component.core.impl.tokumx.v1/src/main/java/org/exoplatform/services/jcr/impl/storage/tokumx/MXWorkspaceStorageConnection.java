@@ -54,6 +54,7 @@ import org.exoplatform.services.jcr.impl.dataflow.PathPersistedValueData;
 import org.exoplatform.services.jcr.impl.dataflow.PermissionPersistedValueData;
 import org.exoplatform.services.jcr.impl.dataflow.ReferencePersistedValueData;
 import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
+import org.exoplatform.services.jcr.impl.dataflow.TransientNodeData;
 import org.exoplatform.services.jcr.impl.dataflow.ValueDataUtil;
 import org.exoplatform.services.jcr.impl.dataflow.ValueDataUtil.ValueDataWrapper;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.ACLHolder;
@@ -87,11 +88,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.jcr.InvalidItemStateException;
@@ -107,7 +110,8 @@ import javax.jcr.ValueFormatException;
  */
 public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
 {
-   private static final Log LOG = ExoLogger.getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceStorageConnection");
+   private static final Log LOG = ExoLogger
+      .getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceStorageConnection");
 
    static final String ID = "Id";
 
@@ -196,6 +200,30 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    private static final String REDUCE =
       "function (key, values) { var result = 0; for (var idx = 0; idx < values.length; idx++) { result += values[idx] } return result; }";
 
+   private static final NodeData FAKE_NODE;
+   static
+   {
+      try
+      {
+         FAKE_NODE = new TransientNodeData(QPath.parse("[]unknown"), "unknown", -1, null, null, -1, "unknwon", null);
+      }
+      catch (IllegalPathException e)
+      {
+         throw new RuntimeException(e);
+      }
+   }
+
+   private static final Pattern ERROR_MSG_PATTERN = Pattern
+      .compile(".*\\{ : \"([^\"]*)\"(, : \"([^\"]*)\", : (\\d*),)?.*");
+
+   private static final int TYPE_ADD = 1 << 0;
+
+   private static final int TYPE_UPDATE = 1 << 1;
+
+   private static final int TYPE_DELETE = 1 << 2;
+
+   private static final int TYPE_RENAME = 1 << 3;
+
    private static final WriteValueHelper WRITE_VALUE_HELPER = new WriteValueHelper();
 
    /**
@@ -240,13 +268,30 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
 
    private final boolean useSequenceForOrderNumber;
 
+   private final int batchSize;
+
+   private int changeStatus;
+
+   private int changeCount;
+
+   /**
+    * All the items to be inserted thanks to a batch insert
+    */
+   private List<ItemData> currentItems;
+
+   /**
+    * All the DBObject to be inserted thanks to a batch insert
+    */
+   private Map<String, BasicDBObject> currentDBObjects;
+
    /**
     * Spool config
     */
    private final SpoolConfig spoolConfig;
 
    MXWorkspaceStorageConnection(DB db, String collectionName, boolean readOnly, boolean autoCommit,
-      boolean useSequenceForOrderNumber, ValueStoragePluginProvider valueStorageProvider, SpoolConfig spoolConfig)
+      boolean useSequenceForOrderNumber, int batchSize, ValueStoragePluginProvider valueStorageProvider,
+      SpoolConfig spoolConfig)
    {
       this.db = db;
       this.collection = db.getCollection(collectionName);
@@ -263,6 +308,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       }
       this.autoCommit = autoCommit;
       this.useSequenceForOrderNumber = useSequenceForOrderNumber;
+      this.batchSize = batchSize;
       this.valueStorageProvider = valueStorageProvider;
       this.spoolConfig = spoolConfig;
       this.valueChanges = new ArrayList<ValueIOChannel>();
@@ -1381,32 +1427,27 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
-         BasicDBObject node =
-            new BasicDBObject(ID, data.getIdentifier())
-               .append(PARENT_ID,
-                  data.getParentIdentifier() == null ? Constants.ROOT_PARENT_UUID : data.getParentIdentifier())
-               .append(NAME, data.getQPath().getName().getAsString()).append(INDEX, data.getQPath().getIndex())
-               .append(IS_NODE, Boolean.TRUE).append(VERSION, data.getPersistedVersion())
-               .append(ORDER_NUMBER, data.getOrderNumber());
-         collection.insert(node);
-         if (data.getParentIdentifier() != null)
+         setOperationType(TYPE_ADD);
+         BasicDBObject node = createAddNodeDBObject(data);
+         boolean updateBatchingEnabled = updateBatchingEnabled();
+         if (updateBatchingEnabled)
          {
-            BasicDBObject query = new BasicDBObject(ID, data.getParentIdentifier());
-            DBObject parentNode = collection.findOne(query, new BasicDBObject(ID, Boolean.TRUE));
-            if (parentNode == null)
-               throw new JCRInvalidItemStateException("(added) Parent node not found " + data.getQPath().getAsString()
-                  + " " + data.getIdentifier() + ". Probably was deleted by another session ", data.getIdentifier(),
-                  ItemState.ADDED);
-
+            addCurrentItem(data, node);
+            checkParentNode(data, updateBatchingEnabled);
          }
-
-         if (LOG.isDebugEnabled())
+         else
          {
-            LOG.debug("Node added " + data.getQPath().getAsString() + ", " + data.getIdentifier() + ", "
-               + data.getPrimaryTypeName().getAsString());
+            collection.insert(node);
+            checkParentNode(data, updateBatchingEnabled);
+
+            if (LOG.isDebugEnabled())
+            {
+               LOG.debug("Node added " + data.getQPath().getAsString() + ", " + data.getIdentifier() + ", "
+                  + data.getPrimaryTypeName().getAsString());
+            }
          }
       }
-      catch (JCRInvalidItemStateException e)
+      catch (RepositoryException e)
       {
          throw e;
       }
@@ -1436,6 +1477,44 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    }
 
    /**
+    * Checks if the parent node exists
+    * @throws JCRInvalidItemStateException if the parent node cannot be found
+    */
+   private void checkParentNode(NodeData data, boolean updateBatchingEnabled) throws JCRInvalidItemStateException
+   {
+      if (data.getParentIdentifier() != null)
+      {
+         if (updateBatchingEnabled && currentDBObjects != null)
+         {
+            BasicDBObject parent = currentDBObjects.get(data.getParentIdentifier());
+            if (parent != null)
+            {
+               return;
+            }
+         }
+         BasicDBObject query = new BasicDBObject(ID, data.getParentIdentifier());
+         DBObject parentNode = collection.findOne(query, new BasicDBObject(ID, Boolean.TRUE));
+         if (parentNode == null)
+            throw new JCRInvalidItemStateException("(added) Parent node not found " + data.getQPath().getAsString()
+               + " " + data.getIdentifier() + ". Probably was deleted by another session ", data.getIdentifier(),
+               ItemState.ADDED);
+      }
+   }
+
+   /**
+    * Wraps a {@link NodeData} into a {@link DBObject} that can be used for an insert
+    */
+   private BasicDBObject createAddNodeDBObject(NodeData data)
+   {
+      return new BasicDBObject(ID, data.getIdentifier())
+         .append(PARENT_ID,
+            data.getParentIdentifier() == null ? Constants.ROOT_PARENT_UUID : data.getParentIdentifier())
+         .append(NAME, data.getQPath().getName().getAsString()).append(INDEX, data.getQPath().getIndex())
+         .append(IS_NODE, Boolean.TRUE).append(VERSION, data.getPersistedVersion())
+         .append(ORDER_NUMBER, data.getOrderNumber());
+   }
+
+   /**
     * {@inheritDoc}
     */
    public void add(PropertyData data, ChangedSizeHandler sizeHandler) throws RepositoryException,
@@ -1444,35 +1523,23 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
-         String name = data.getQPath().getName().getAsString();
-         BasicDBObject property =
-            new BasicDBObject(ID, data.getIdentifier()).append(PARENT_ID, data.getParentIdentifier())
-               .append(NAME, name).append(INDEX, data.getQPath().getIndex()).append(IS_NODE, Boolean.FALSE)
-               .append(VERSION, data.getPersistedVersion()).append(TYPE, data.getType())
-               .append(IS_MULTI_VALUED, data.isMultiValued());
-
-         List<DBObject> dbValues = addValues(data.getIdentifier(), data, sizeHandler);
-         property.append(VALUES, dbValues);
-         collection.insert(property);
-         if (MAIN_PROPERTIES.containsKey(name))
+         setOperationType(TYPE_ADD);
+         BasicDBObject property = createAddPropertyDBObject(data, sizeHandler);
+         boolean updateBatchingEnabled = updateBatchingEnabled();
+         if (updateBatchingEnabled)
          {
-            BasicDBObject query = new BasicDBObject(ID, data.getParentIdentifier());
-            BasicDBObject update =
-               new BasicDBObject("$set", new BasicDBObject(MAIN_PROPERTIES.get(name), getValues(data)));
-            WriteResult result = collection.update(query, update);
-            if (result.getN() <= 0)
-            {
-               throw new JCRInvalidItemStateException("(added) Parent node not found " + data.getQPath().getAsString()
-                  + " " + data.getIdentifier() + ". Probably was deleted by another session ", data.getIdentifier(),
-                  ItemState.ADDED);
-
-            }
-
+            addCurrentItem(data, property);
+            addToParentNodeIfNeeded(data, updateBatchingEnabled);
          }
-         if (LOG.isDebugEnabled())
+         else
          {
-            LOG.debug("Property added " + data.getQPath().getAsString() + ", " + data.getIdentifier()
-               + (data.getValues() != null ? ", values count: " + data.getValues().size() : ", NULL data"));
+            collection.insert(property);
+            addToParentNodeIfNeeded(data, updateBatchingEnabled);
+            if (LOG.isDebugEnabled())
+            {
+               LOG.debug("Property added " + data.getQPath().getAsString() + ", " + data.getIdentifier()
+                  + (data.getValues() != null ? ", values count: " + data.getValues().size() : ", NULL data"));
+            }
          }
       }
       catch (IOException e)
@@ -1483,7 +1550,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
          }
          throw new RepositoryException("Error of Property Value add " + e, e);
       }
-      catch (JCRInvalidItemStateException e)
+      catch (RepositoryException e)
       {
          throw e;
       }
@@ -1509,6 +1576,54 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
          throw new RepositoryException("Could not add property Path: " + data.getQPath().getAsString() + ", ID: "
             + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier() + ". Cause >>>> " + e.getMessage(), e);
       }
+   }
+
+   /**
+    * Adds the value of the property to the main parent node if it is one of the main properties   
+    */
+   private void addToParentNodeIfNeeded(PropertyData data, boolean updateBatchingEnabled) throws IOException,
+      RepositoryException, JCRInvalidItemStateException
+   {
+      String name = data.getQPath().getName().getAsString();
+      if (MAIN_PROPERTIES.containsKey(name))
+      {
+         if (updateBatchingEnabled && currentDBObjects != null)
+         {
+            BasicDBObject parent = currentDBObjects.get(data.getParentIdentifier());
+            if (parent != null)
+            {
+               parent.append(MAIN_PROPERTIES.get(name), getValues(data));
+               return;
+            }
+         }
+         BasicDBObject query = new BasicDBObject(ID, data.getParentIdentifier());
+         BasicDBObject update =
+            new BasicDBObject("$set", new BasicDBObject(MAIN_PROPERTIES.get(name), getValues(data)));
+         WriteResult result = collection.update(query, update);
+         if (result.getN() <= 0)
+         {
+            throw new JCRInvalidItemStateException("(added) Parent node not found " + data.getQPath().getAsString()
+               + " " + data.getIdentifier() + ". Probably was deleted by another session ", data.getIdentifier(),
+               ItemState.ADDED);
+         }
+      }
+   }
+
+   /**
+    * Wraps a {@link PropertyData} into a {@link DBObject} that can be used for an insert
+    */
+   private BasicDBObject createAddPropertyDBObject(PropertyData data, ChangedSizeHandler sizeHandler)
+      throws IOException, RepositoryException
+   {
+      BasicDBObject property =
+         new BasicDBObject(ID, data.getIdentifier()).append(PARENT_ID, data.getParentIdentifier())
+            .append(NAME, data.getQPath().getName().getAsString()).append(INDEX, data.getQPath().getIndex())
+            .append(IS_NODE, Boolean.FALSE).append(VERSION, data.getPersistedVersion()).append(TYPE, data.getType())
+            .append(IS_MULTI_VALUED, data.isMultiValued());
+
+      List<DBObject> dbValues = addValues(data.getIdentifier(), data, sizeHandler);
+      property.append(VALUES, dbValues);
+      return property;
    }
 
    private List<DBObject> addValues(String cid, final PropertyData data, ChangedSizeHandler sizeHandler)
@@ -1688,6 +1803,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
+         setOperationType(TYPE_UPDATE);
          BasicDBObject target = new BasicDBObject(ID, data.getIdentifier());
          BasicDBObject update =
             new BasicDBObject(VERSION, data.getPersistedVersion()).append(INDEX, data.getQPath().getIndex()).append(
@@ -1727,6 +1843,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
+         setOperationType(TYPE_UPDATE);
          String cid = data.getIdentifier();
          // do Values update: delete all and add all
          deleteValues(data, sizeHandler);
@@ -1791,6 +1908,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
+         setOperationType(TYPE_RENAME);
          BasicDBObject target = new BasicDBObject(ID, data.getIdentifier());
          BasicDBObject update =
             new BasicDBObject(PARENT_ID, data.getParentIdentifier() == null ? Constants.ROOT_PARENT_UUID
@@ -1826,6 +1944,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       checkIfOpened();
       try
       {
+         setOperationType(TYPE_DELETE);
          BasicDBObject node = new BasicDBObject(ID, data.getIdentifier());
          WriteResult result = collection.remove(node);
          if (result.getN() <= 0)
@@ -1862,6 +1981,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       String cid = data.getIdentifier();
       try
       {
+         setOperationType(TYPE_DELETE);
          deleteValues(data, sizeHandler);
          BasicDBObject node = new BasicDBObject(ID, cid);
          WriteResult result = collection.remove(node);
@@ -1970,6 +2090,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
     */
    public void prepare() throws IllegalStateException, RepositoryException
    {
+      endChanges();
       try
       {
          for (ValueIOChannel vo : valueChanges)
@@ -2216,4 +2337,145 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       collection.remove(query);
    }
 
+   private void endChanges() throws RepositoryException
+   {
+      setOperationType(-1);
+   }
+
+   private void setOperationType(int operationType) throws RepositoryException
+   {
+      if (!updateBatchingEnabled())
+      {
+         return;
+      }
+      boolean executeBatch = false;
+      int currentChangeStatus = changeStatus;
+      if (operationType != -1)
+      {
+         // We add a new change
+         if (currentChangeStatus == 0)
+         {
+            // Initialization of the change status
+            changeStatus = operationType;
+            changeCount = 1;
+            return;
+         }
+         else if (operationType == currentChangeStatus)
+         {
+            // We have no current change or the changes are of the same type
+            // so we have no risk to get a collision between changes
+            executeBatch = changeCount++ >= batchSize;
+            if (executeBatch)
+            {
+               changeCount = 1;
+            }
+         }
+         else
+         {
+            // We change of operation type so we need to
+            // execute the pending changes to prevent collisions
+            executeBatch = true;
+            changeStatus = operationType;
+            changeCount = 1;
+         }
+      }
+      else
+      {
+         // we are about to close the statements so we need to check if there are pending changes
+         executeBatch = changeCount > 0;
+         if (executeBatch)
+         {
+            changeStatus = 0;
+            changeCount = 0;
+         }
+      }
+      if (executeBatch && currentDBObjects != null)
+      {
+         try
+         {
+            collection.insert(new ArrayList<DBObject>(currentDBObjects.values()));
+         }
+         catch (DuplicateKey e)
+         {
+            CommandResult result = e.getCommandResult();
+            ItemData data = FAKE_NODE;
+            if (result != null)
+            {
+               String msg = result.getString("err");
+               if (msg != null)
+               {
+                  Matcher matcher = ERROR_MSG_PATTERN.matcher(msg);
+                  if (matcher.matches())
+                  {
+                     String id = matcher.group(1);
+                     String name = matcher.group(3);
+                     String indexStr = matcher.group(4);
+                     boolean failureOnId = name == null;
+                     for (ItemData item : currentItems)
+                     {
+                        if (failureOnId)
+                        {
+                           if (item.getIdentifier().equals(id))
+                           {
+                              data = item;
+                              break;
+                           }
+                        }
+                        else if (id.equals(item.getParentIdentifier() == null ? Constants.ROOT_PARENT_UUID : item
+                           .getParentIdentifier())
+                           && item.getQPath().getName().getAsString().equals(name)
+                           && Integer.toString(item.getQPath().getIndex()).equals(indexStr))
+                        {
+                           data = item;
+                           break;
+                        }
+                     }
+                     if (failureOnId)
+                        throw new JCRInvalidItemStateException("Could not add item Path: "
+                           + data.getQPath().getAsString() + ", ID: " + data.getIdentifier() + ", ParentID: "
+                           + data.getParentIdentifier() + ". Cause >>>> Item already exists.", data.getIdentifier(),
+                           ItemState.ADDED, e);
+                  }
+               }
+            }
+            throw new ItemExistsException("Could not add item Path: " + data.getQPath().getAsString() + ", ID: "
+               + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier()
+               + ". Cause >>>> Item already exists.", e);
+         }
+         catch (Exception e)
+         {
+            ItemData data = FAKE_NODE;
+            throw new RepositoryException("Could not add item Path: " + data.getQPath().getAsString() + ", ID: "
+               + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier() + ". Cause >>>> " + e.getMessage(),
+               e);
+         }
+         finally
+         {
+            currentItems = null;
+            currentDBObjects = null;
+         }
+      }
+   }
+
+   private boolean updateBatchingEnabled()
+   {
+      return batchSize > 1;
+   }
+
+   protected void addCurrentItem(ItemData item, BasicDBObject object) throws JCRInvalidItemStateException
+   {
+      if (currentDBObjects == null)
+      {
+         currentItems = new ArrayList<ItemData>();
+         currentDBObjects = new LinkedHashMap<String, BasicDBObject>();
+      }
+      currentItems.add(item);
+      if (currentDBObjects.put(item.getIdentifier(), object) != null)
+      {
+         throw new JCRInvalidItemStateException("Could not add item Path: "
+                  + item.getQPath().getAsString() + ", ID: " + item.getIdentifier() + ", ParentID: "
+                  + item.getParentIdentifier() + ". Cause >>>> Item already exists.", item.getIdentifier(),
+                  ItemState.ADDED);
+      }
+   }
 }
