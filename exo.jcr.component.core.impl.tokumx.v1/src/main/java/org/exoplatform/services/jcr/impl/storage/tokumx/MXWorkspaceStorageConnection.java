@@ -276,6 +276,22 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    private int changeCount;
 
    /**
+    * The max order number that we use to update the sequence in order
+    * to avoid a gap especially when we add sub nodes to a new parent node
+    */
+   private int localMaxOrderNumber;
+
+   /**
+    * The list of the id of all the nodes that have been added
+    */
+   private Set<String> addedNodeIds;
+
+   /**
+    * Indicates whether or not the sequence needs to be updated
+    */
+   private boolean updateSequence;
+
+   /**
     * All the items to be inserted thanks to a batch insert
     */
    private List<ItemData> currentItems;
@@ -1447,6 +1463,20 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
                   + data.getPrimaryTypeName().getAsString());
             }
          }
+         if (useSequenceForOrderNumber)
+         {
+            localMaxOrderNumber = Math.max(data.getOrderNumber(), localMaxOrderNumber);
+            if (!updateSequence)
+            {
+               if (addedNodeIds == null)
+                  addedNodeIds = new HashSet<String>();
+               addedNodeIds.add(data.getIdentifier());
+               String pid = data.getParentIdentifier();
+               updateSequence = pid != null && addedNodeIds.contains(pid);
+               if (updateSequence)
+                  addedNodeIds = null;
+            }
+         }
       }
       catch (RepositoryException e)
       {
@@ -2153,11 +2183,49 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
                valueChanges.clear();
             }
             commitTransaction();
+            onPostCommit();
          }
       }
       finally
       {
          close();
+      }
+   }
+
+   /**
+    * This gives the ability to execute some code after committing the transaction 
+    */
+   protected void onPostCommit() throws IllegalStateException, RepositoryException
+   {
+      if (useSequenceForOrderNumber && updateSequence && localMaxOrderNumber > 0)
+      {
+         updateSequence();
+      }
+   }
+
+   /**
+    * Updates the value of the sequence in order to avoid any gap
+    * @throws RepositoryException if the sequence could not be updated
+    */
+   protected void updateSequence() throws IllegalStateException, RepositoryException
+   {
+      checkIfOpened();
+      BasicDBObject target = new BasicDBObject(ID, Constants.ROOT_UUID);
+      BasicDBObject fields = new BasicDBObject(SEQUENCE, Boolean.TRUE);
+      DBObject sequence = collection.findOne(target, fields);
+      if (sequence == null)
+         throw new RepositoryException("The sequence cannot be found");
+      int currentValue = sequence.containsField(SEQUENCE) ? (Integer)sequence.get(SEQUENCE) : 0;
+      if (currentValue < localMaxOrderNumber)
+      {
+         LOG.debug("The sequence must be updated from {} to {}", currentValue, localMaxOrderNumber);
+         BasicDBObject update = new BasicDBObject("$inc", new BasicDBObject(SEQUENCE, localMaxOrderNumber - currentValue));
+         collection.findAndModify(target, fields, null, false, update, true, false);
+      }
+      else
+      {
+         LOG.trace("The sequence doesn't need to be updated: currentValue = {} and localMaxOrderNumber = {}",
+            currentValue, localMaxOrderNumber);
       }
    }
 
