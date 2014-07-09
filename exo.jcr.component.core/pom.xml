@@ -25,7 +25,7 @@
    <parent>
       <groupId>org.exoplatform.jcr</groupId>
       <artifactId>jcr-parent</artifactId>
-      <version>1.16.1-GA-SNAPSHOT</version>
+      <version>1.16.x-SNAPSHOT</version>
    </parent>
    <artifactId>exo.jcr.component.core</artifactId>
    <name>eXo JCR :: Component :: Core Service</name>
@@ -37,6 +37,7 @@
       <value.storage.enabled>true</value.storage.enabled>
       <statistics.enabled>false</statistics.enabled>
       <batch.size>-1</batch.size>
+      <dialect>auto</dialect>
       <use.distributed.cache>false</use.distributed.cache>
       <properties.url.suffix>-sjdbc.properties</properties.url.suffix>
       <properties.url.prefix>classpath:/conf/standalone/default</properties.url.prefix>
@@ -129,8 +130,14 @@
          </exclusions>
       </dependency>
       <dependency>
-	     <groupId>org.jboss</groupId>
-	     <artifactId>jboss-common-core</artifactId>
+	 <groupId>org.jboss</groupId>
+	 <artifactId>jboss-common-core</artifactId>
+        <exclusions>
+            <exclusion>
+               <groupId>org.jboss.logging</groupId>
+               <artifactId>jboss-logging-spi</artifactId>
+            </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
          <groupId>org.antlr</groupId>
@@ -262,6 +269,10 @@
                   <property>
                      <name>value-storage-enabled</name>
                      <value>${value.storage.enabled}</value>
+                  </property>
+                  <property>
+                     <name>dialect</name>
+                     <value>${dialect}</value>
                   </property>
                   <property>
                      <name>use-distributed-cache</name>
@@ -579,6 +590,10 @@
                            <value>${value.storage.enabled}</value>
                         </property>
                          <property>
+                           <name>dialect</name>
+                           <value>${dialect}</value>
+                         </property>
+                         <property>
                            <name>use-distributed-cache</name>
                            <value>${use.distributed.cache}</value>
                         </property>
@@ -668,6 +683,10 @@
                         <property>
                             <name>value-storage-enabled</name>
                             <value>${value.storage.enabled}</value>
+                        </property>
+                        <property>
+                            <name>dialect</name>
+                            <value>${dialect}</value>
                         </property>
                         <property>
                            <name>use-distributed-cache</name>
