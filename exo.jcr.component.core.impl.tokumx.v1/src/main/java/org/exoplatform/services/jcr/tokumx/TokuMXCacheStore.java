@@ -396,10 +396,19 @@ public class TokuMXCacheStore extends AbstractCacheStore
    public void start() throws CacheLoaderException
    {
       super.start();
+      String connectionURI = cfg.getConnectionURI();
+      if (connectionURI == null || connectionURI.isEmpty())
+         throw new CacheLoaderException("The connection URI has not been set");
+      LOG.trace("Connection URI has been set to '{}'", connectionURI);
+      String collectionName = cfg.getCollectionName();
+      if (collectionName == null || collectionName.isEmpty())
+         throw new CacheLoaderException("The name of the collection has not been set");
+      LOG.trace("Collection name has been set to '{}'", collectionName);
+      LOG.trace("Auto commit has been set to '{}'", cfg.isAutoCommit());
       String databaseName;
       try
       {
-         MongoClientURI uri = new MongoClientURI(cfg.getConnectionURI());
+         MongoClientURI uri = new MongoClientURI(connectionURI);
          this.mongo = new MongoClient(uri);
          databaseName = uri.getDatabase() == null || uri.getDatabase().isEmpty() ? "jcr" : uri.getDatabase();
       }
@@ -408,7 +417,7 @@ public class TokuMXCacheStore extends AbstractCacheStore
          throw new CacheLoaderException("Unable to find or initialize a connection to the MongoDB server", e);
       }
       mongoDb = extractDatabase(databaseName);
-      this.collection = mongoDb.getCollection(this.cfg.getCollectionName());
+      this.collection = mongoDb.getCollection(collectionName);
 
    }
 
