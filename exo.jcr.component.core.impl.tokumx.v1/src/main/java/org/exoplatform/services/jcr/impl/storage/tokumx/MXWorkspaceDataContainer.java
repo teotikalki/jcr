@@ -377,8 +377,6 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
    private void addIndexes(DBCollection collection)
    {
       LOG.debug("The collection '{}' has successfully been created", collectionName);
-      collection.ensureIndex(new BasicDBObject(MXWorkspaceStorageConnection.ID, 1), new BasicDBObject("unique",
-         Boolean.TRUE).append("clustering", Boolean.TRUE));
       collection.ensureIndex(
          new BasicDBObject(MXWorkspaceStorageConnection.PARENT_ID, 1)
             .append(MXWorkspaceStorageConnection.NAME, 1).append(MXWorkspaceStorageConnection.INDEX, 1)

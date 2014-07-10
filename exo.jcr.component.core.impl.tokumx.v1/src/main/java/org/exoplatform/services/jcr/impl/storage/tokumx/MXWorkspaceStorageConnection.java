@@ -114,7 +114,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
    private static final Log LOG = ExoLogger
       .getLogger("exo.jcr.component.core.impl.tokumx.v1.MXWorkspaceStorageConnection");
 
-   static final String ID = "Id";
+   static final String ID = "_id";
 
    static final String PARENT_ID = "Pid";
 
@@ -1488,16 +1488,16 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
          if (result != null)
          {
             String msg = result.getString("err");
-            if (msg != null && msg.contains(data.getIdentifier()))
+            if (msg != null && msg.contains(data.getParentIdentifier()))
             {
-               throw new JCRInvalidItemStateException("Could not add node Path: " + data.getQPath().getAsString()
-                  + ", ID: " + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier()
-                  + ". Cause >>>> Item already exists.", data.getIdentifier(), ItemState.ADDED, e);
+               throw new ItemExistsException("Could not add node Path: " + data.getQPath().getAsString() + ", ID: "
+                  + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier()
+                  + ". Cause >>>> Item already exists.", e);
             }
          }
-         throw new ItemExistsException("Could not add node Path: " + data.getQPath().getAsString() + ", ID: "
+         throw new JCRInvalidItemStateException("Could not add node Path: " + data.getQPath().getAsString() + ", ID: "
             + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier() + ". Cause >>>> Item already exists.",
-            e);
+            data.getIdentifier(), ItemState.ADDED, e);
       }
       catch (Exception e)
       {
@@ -2468,6 +2468,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
          {
             CommandResult result = e.getCommandResult();
             ItemData data = FAKE_NODE;
+            boolean failureOnId = true;
             if (result != null)
             {
                String msg = result.getString("err");
@@ -2479,7 +2480,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
                      String id = matcher.group(1);
                      String name = matcher.group(3);
                      String indexStr = matcher.group(4);
-                     boolean failureOnId = name == null;
+                     failureOnId = name == null;
                      for (ItemData item : currentItems)
                      {
                         if (failureOnId)
@@ -2499,14 +2500,14 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
                            break;
                         }
                      }
-                     if (failureOnId)
-                        throw new JCRInvalidItemStateException("Could not add item Path: "
-                           + data.getQPath().getAsString() + ", ID: " + data.getIdentifier() + ", ParentID: "
-                           + data.getParentIdentifier() + ". Cause >>>> Item already exists.", data.getIdentifier(),
-                           ItemState.ADDED, e);
                   }
                }
             }
+            if (failureOnId)
+               throw new JCRInvalidItemStateException("Could not add item Path: "
+                  + data.getQPath().getAsString() + ", ID: " + data.getIdentifier() + ", ParentID: "
+                  + data.getParentIdentifier() + ". Cause >>>> Item already exists.", data.getIdentifier(),
+                  ItemState.ADDED, e);
             throw new ItemExistsException("Could not add item Path: " + data.getQPath().getAsString() + ", ID: "
                + data.getIdentifier() + ", ParentID: " + data.getParentIdentifier()
                + ". Cause >>>> Item already exists.", e);
