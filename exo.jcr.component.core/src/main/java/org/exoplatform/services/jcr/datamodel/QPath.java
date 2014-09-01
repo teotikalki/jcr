@@ -19,11 +19,13 @@
 package org.exoplatform.services.jcr.datamodel;
 
 import org.exoplatform.commons.utils.QName;
+import org.exoplatform.services.jcr.util.ConcurrentWeakValueMap;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.jcr.PathNotFoundException;
 
@@ -36,6 +38,13 @@ import javax.jcr.PathNotFoundException;
 
 public class QPath implements Comparable<QPath>
 {
+   /**
+    * We use a weak value map in order to be able to reuse existing instances of 
+    * QPathEntry which helps to save a lot of memory when we deserialize items
+    */
+   private static final ConcurrentMap<String, QPathEntry> OBJECT_POOL =
+      new ConcurrentWeakValueMap<String, QPathEntry>();
+
    /**
     * Logger.
     */
@@ -354,6 +363,23 @@ public class QPath implements Comparable<QPath>
     */
    public static QPath parse(String qPath) throws IllegalPathException
    {
+      return parse(qPath, false);
+   }
+
+   /**
+    * Parses string and make internal path from it.
+    * 
+    * @param qPath
+    *          - String to be parsed
+    * @param useObjectPool
+    *          - Indicates whether an object pool should be used to be able to reuse
+    *            {@link QPathEntry} object instances 
+    * @return QPath
+    * @throws IllegalPathException
+    *           - if string is invalid
+    */
+   public static QPath parse(String qPath, boolean useObjectPool) throws IllegalPathException
+   {
       if (qPath == null)
          throw new IllegalPathException("Bad internal path '" + qPath + "'");
 
@@ -361,11 +387,13 @@ public class QPath implements Comparable<QPath>
          throw new IllegalPathException("Bad internal path '" + qPath + "'");
 
       int uriStart = 0;
+      int from, to;
       List<QPathEntry> entries = new ArrayList<QPathEntry>();
       while (uriStart >= 0)
       {
 
          uriStart = qPath.indexOf("[", uriStart);
+         from = uriStart;
 
          int uriFinish = qPath.indexOf("]", uriStart);
          String uri = qPath.substring(uriStart + 1, uriFinish);
@@ -379,6 +407,7 @@ public class QPath implements Comparable<QPath>
          else
             uriStart = tmp;
 
+         to = tmp;
          String localName = qPath.substring(uriFinish + 1, tmp);
          int index = 0;
          int ind = localName.indexOf(PREFIX_DELIMITER);
@@ -393,8 +422,14 @@ public class QPath implements Comparable<QPath>
                throw new IllegalPathException("Bad internal path '" + qPath
                   + "' each intermediate name should have index");
          }
-
-         entries.add(new QPathEntry(uri, localName, index));
+         QPathEntry entry = new QPathEntry(uri, localName, index);
+         if (useObjectPool)
+         {
+            QPathEntry prevEntry = OBJECT_POOL.putIfAbsent(qPath.substring(from, to), entry);
+            if (prevEntry != null)
+               entry = prevEntry;
+         }
+         entries.add(entry);
       }
       return new QPath(entries.toArray(new QPathEntry[entries.size()]));
    }

@@ -131,6 +131,7 @@ public abstract class PersistedItemData implements ItemData, Externalizable
       return false;
    }
 
+   @SuppressWarnings("serial")
    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
    {
       byte[] buf;
@@ -140,7 +141,7 @@ public abstract class PersistedItemData implements ItemData, Externalizable
          buf = new byte[in.readInt()];
          in.readFully(buf);
          String sQPath = new String(buf, Constants.DEFAULT_ENCODING);
-         qpath = QPath.parse(sQPath);
+         qpath = QPath.parse(sQPath, true);
       }
       catch (final IllegalPathException e)
       {
