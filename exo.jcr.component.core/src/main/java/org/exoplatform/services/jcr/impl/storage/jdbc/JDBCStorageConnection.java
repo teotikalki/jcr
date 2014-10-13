@@ -69,7 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-import java.util.StringTokenizer;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -701,6 +700,7 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
       {
          throw new RepositoryException(e);
       }
+      onPreCommit();
    }
 
    /**
@@ -759,6 +759,13 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
             }
          }
       }
+   }
+
+   /**
+    * This gives the ability to execute some code after committing the transaction
+    */
+   protected void onPreCommit() throws IllegalStateException, RepositoryException
+   {
    }
 
    /**
@@ -1285,6 +1292,7 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
       checkIfOpened();
       try
       {
+         startTxIfNeeded();
          ResultSet resultSet = findNodesAndProperties(lastNodeId, offset, limit);
          int processed = 0;
 
@@ -1479,6 +1487,7 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
       checkIfOpened();
       try
       {
+         startTxIfNeeded();
          ResultSet refProps = findReferences(getInternalId(nodeIdentifier));
          try
          {
@@ -2233,9 +2242,7 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
          {
             do
             {
-               StringTokenizer parser =
-                  new StringTokenizer(new String(exoPerm.getBytes(COLUMN_VDATA)), AccessControlEntry.DELIMITER);
-               naPermissions.add(new AccessControlEntry(parser.nextToken(), parser.nextToken()));
+               naPermissions.add(AccessControlEntry.parse(new String(exoPerm.getBytes(COLUMN_VDATA))));
             }
             while (exoPerm.next());
 
@@ -2975,6 +2982,14 @@ public abstract class JDBCStorageConnection extends DBConstants implements Works
          return vd1.getOrderNumber() - vd2.getOrderNumber();
       }
    };
+
+   /**
+    * change auto-commit mode if needed.
+    */
+   protected void startTxIfNeeded() throws SQLException
+   {
+
+   }
 
    protected abstract int addNodeRecord(NodeData data) throws SQLException, InvalidItemStateException,
       RepositoryException;

@@ -93,7 +93,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -764,8 +763,7 @@ public class MXWorkspaceStorageConnection implements WorkspaceStorageConnection
       {
          for (String value : values)
          {
-            StringTokenizer parser = new StringTokenizer(value, AccessControlEntry.DELIMITER);
-            naPermissions.add(new AccessControlEntry(parser.nextToken(), parser.nextToken()));
+            naPermissions.add(AccessControlEntry.parse(value));
          }
 
          return naPermissions;

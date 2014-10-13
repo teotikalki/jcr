@@ -34,7 +34,7 @@ import javax.transaction.UserTransaction;
 
 /**
  * Created by The eXo Platform SAS.
- * 
+ *
  * @author <a href="mailto:nzamosenchuk@exoplatform.com">Nikolay Zamosenchuk</a>
  * @version $Id: TestGetNode.java 111 2009-11-11 11:11:11Z nzamosenchuk $
  */
@@ -395,7 +395,7 @@ public class TestGetNodesLazily extends JcrImplBaseTest
          size++;
          iterator.next();
       }
-      
+
       assertEquals(320, size);
    }
 
