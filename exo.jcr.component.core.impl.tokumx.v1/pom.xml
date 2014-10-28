@@ -209,6 +209,12 @@
                   <exclude>org/exoplatform/services/jcr/impl/storage/jdbc/TestRepositoryCheckController.java</exclude>
                   <exclude>org/exoplatform/services/jcr/impl/storage/jdbc/TestWriteOperations.java</exclude>
                   <exclude>org/exoplatform/services/jcr/impl/core/TestSVNodeDataOptimization.java</exclude>
+                  <!-- Exclude the test for value storage based on files -->
+                  <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestRemoveFromValueStorage.java</exclude>
+                  <!-- Exclude the test for container based on jdbc -->
+                  <exclude>org/exoplatform/services/jcr/impl/storage/value/cas/TestJDBCValueContentAddressStorageImpl.java</exclude>
+                  <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestCASableSimpleFileIOChannel.java</exclude>
+                  <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestCASableTreeFileIOChannel.java</exclude>
                   <!-- Implementation Specific Excludes -->
                   <exclude>${test.cache.exclude}</exclude>
                   <exclude>${test.exclude}</exclude>
@@ -524,6 +530,12 @@
                         <exclude>org/exoplatform/services/jcr/impl/storage/jdbc/TestWriteOperations.java</exclude>
                         <exclude>org/exoplatform/services/jcr/impl/core/TestSVNodeDataOptimization.java</exclude>
                         <exclude>org/exoplatform/services/jcr/usecases/export/ExportWorkspaceSystemViewTest.java</exclude>
+                        <!-- Exclude the test for value storage based on files -->
+                        <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestRemoveFromValueStorage.java</exclude>
+                        <!-- Exclude the test for container based on jdbc -->
+                        <exclude>org/exoplatform/services/jcr/impl/storage/value/cas/TestJDBCValueContentAddressStorageImpl.java</exclude>
+                        <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestCASableSimpleFileIOChannel.java</exclude>
+                        <exclude>org/exoplatform/services/jcr/impl/storage/value/fs/TestCASableTreeFileIOChannel.java</exclude>
                         <!-- Implementation Specific Excludes -->
                         <exclude>${test.cache.exclude}</exclude>
                         <exclude>${test.exclude}</exclude>

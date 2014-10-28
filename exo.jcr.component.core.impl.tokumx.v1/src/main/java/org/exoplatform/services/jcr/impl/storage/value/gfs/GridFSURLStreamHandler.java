@@ -16,32 +16,38 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.exoplatform.services.jcr.tokumx;
+package org.exoplatform.services.jcr.impl.storage.value.gfs;
+
+import org.exoplatform.services.jcr.storage.value.ValueStorageURLConnection;
+import org.exoplatform.services.jcr.storage.value.ValueStorageURLStreamHandler;
+
+import java.io.IOException;
+import java.net.URL;
 
 /**
- * An utility class for everything related to MongoDB/TokuMX
- * 
  * @author <a href="mailto:nfilotto@exoplatform.com">Nicolas Filotto</a>
  * @version $Id$
  *
  */
-public class Utils
+class GridFSURLStreamHandler extends ValueStorageURLStreamHandler
 {
+   /**
+    * The client that we use to access to the GridFS
+    */
+   private final GridFS gridFs;
 
-   private Utils()
+   GridFSURLStreamHandler(GridFS gridFs)
    {
+      this.gridFs = gridFs;
    }
 
    /**
-    * Provides the name of the collection using the provided prefix and suffix, that will be concatenated using 
-    * underscore from which we will replace the invalid characters with underscores
+    * @see org.exoplatform.services.jcr.storage.value.ValueStorageURLStreamHandler#createURLConnection(java.net.URL, java.lang.String, java.lang.String, java.lang.String)
     */
-   public static String getCollectionName(String prefix, String suffix)
+   @Override
+   protected ValueStorageURLConnection createURLConnection(URL u, String repository, String workspace,
+      String valueStorageId) throws IOException
    {
-      StringBuilder name = new StringBuilder();
-      name.append(prefix);
-      name.append('_');
-      name.append(suffix.replace('$', '_').replace('\0', '_'));
-      return name.toString();
+      return new GridFSURLConnection(gridFs, u);
    }
 }

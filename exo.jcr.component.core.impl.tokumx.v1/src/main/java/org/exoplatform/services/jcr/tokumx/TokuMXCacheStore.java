@@ -434,15 +434,6 @@ public class TokuMXCacheStore extends AbstractCacheStore
       try
       {
          LOG.debug("Connecting to Mongo database named {}", databaseName);
-         //         if (!"".equals(this.cfg.getUsername()))
-         //         {
-         //            DB admin = this.mongo.getDB("admin");
-         //            boolean auth = admin.authenticate(this.cfg.getUsername(), this.cfg.getPassword().toCharArray());
-         //            if (!auth)
-         //            {
-         //               throw LOG.authenticationFailed(this.cfg.getUsername());
-         //            }
-         //         }
          return this.mongo.getDB(databaseName);
       }
       catch (MongoException e)

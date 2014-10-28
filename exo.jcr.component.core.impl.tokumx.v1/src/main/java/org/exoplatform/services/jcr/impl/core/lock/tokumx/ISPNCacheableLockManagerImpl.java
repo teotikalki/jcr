@@ -25,7 +25,7 @@ import org.exoplatform.services.jcr.impl.core.lock.LockRemoverHolder;
 import org.exoplatform.services.jcr.impl.core.lock.LockTableHandler;
 import org.exoplatform.services.jcr.impl.dataflow.persistent.WorkspacePersistentDataManager;
 import org.exoplatform.services.jcr.infinispan.ISPNCacheFactory;
-import org.exoplatform.services.jcr.tokumx.Utils;
+import org.exoplatform.services.jcr.util.tokumx.Utils;
 import org.exoplatform.services.naming.InitialContextInitializer;
 import org.exoplatform.services.transaction.TransactionService;
 import org.infinispan.loaders.CacheLoaderManager;

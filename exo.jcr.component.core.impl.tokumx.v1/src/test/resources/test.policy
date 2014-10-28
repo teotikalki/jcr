@@ -16,6 +16,6 @@ grant codeBase "@TEST_CLASSES@-"{
    permission java.lang.RuntimePermission "manageContainer";
 };
 
-grant codeBase "@MAIN_CLASSES@../../../exo.jcr.component.core/-"{
+grant codeBase "@MAIN_CLASSES@../../../exo.jcr.component.core.impl.tokumx.v1/-"{
    permission java.security.AllPermission;
 };

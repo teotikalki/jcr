@@ -40,13 +40,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws" />
-                           <property name="digest-algo" value="MD5" />
-                           <property name="vcas-type" value="org.exoplatform.services.jcr.impl.storage.value.cas.JDBCValueContentAddressStorageImpl" />
-                           <property name="jdbc-source-name" value="jdbcjcr" />
-                           <property name="jdbc-dialect" value="auto" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -95,9 +91,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws1" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -144,9 +140,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws2" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -199,9 +195,10 @@
                       correctly from each value-storage
                       (TestRemoveFromValueStorage.java)
                       -->
-                     <value-storage id="ws3_big" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws3_big" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws3_big" />
+                           <property name="collection-name-suffix" value="db1_ws3_big" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -275,9 +272,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/wsdb2" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -324,9 +321,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws1db2" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -383,9 +380,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/wstck" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -439,9 +436,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws1" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws1tck" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>
@@ -494,9 +491,9 @@
                      <property name="connection-uri" value="${connection-uri}" />
                   </properties>
                   <value-storages>
-                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.fs.TreeFileValueStorage">
+                     <value-storage id="ws2" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage">
                         <properties>
-                           <property name="path" value="target/temp/values/ws2tck" />
+                           <property name="connection-uri" value="${connection-uri}" />
                            <property name="enabled" value="${value-storage-enabled}" />
                         </properties>
                         <filters>

@@ -21,21 +21,17 @@ package org.exoplatform.services.jcr.impl.storage.tokumx;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 
 import org.exoplatform.commons.utils.PrivilegedFileHelper;
 import org.exoplatform.commons.utils.PrivilegedSystemHelper;
-import org.exoplatform.commons.utils.PropertyManager;
 import org.exoplatform.commons.utils.SecurityHelper;
 import org.exoplatform.services.jcr.config.RepositoryConfigurationException;
 import org.exoplatform.services.jcr.config.RepositoryEntry;
 import org.exoplatform.services.jcr.config.SimpleParameterEntry;
 import org.exoplatform.services.jcr.config.ValueStorageEntry;
 import org.exoplatform.services.jcr.config.WorkspaceEntry;
-import org.exoplatform.services.jcr.core.security.JCRRuntimePermissions;
 import org.exoplatform.services.jcr.impl.Constants;
 import org.exoplatform.services.jcr.impl.backup.BackupException;
 import org.exoplatform.services.jcr.impl.backup.Backupable;
@@ -50,12 +46,15 @@ import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.WorkspaceDataContainerBase;
 import org.exoplatform.services.jcr.impl.storage.statistics.StatisticsWorkspaceStorageConnection;
 import org.exoplatform.services.jcr.impl.storage.tokumx.indexing.MXNodeDataIndexingIterator;
+import org.exoplatform.services.jcr.impl.storage.value.ValueStorageNotFoundException;
 import org.exoplatform.services.jcr.impl.storage.value.fs.FileValueStorage;
 import org.exoplatform.services.jcr.impl.util.io.DirectoryHelper;
 import org.exoplatform.services.jcr.impl.util.io.FileCleanerHolder;
 import org.exoplatform.services.jcr.storage.WorkspaceStorageConnection;
+import org.exoplatform.services.jcr.storage.value.ValueIOChannel;
 import org.exoplatform.services.jcr.storage.value.ValueStoragePluginProvider;
-import org.exoplatform.services.jcr.tokumx.Utils;
+import org.exoplatform.services.jcr.util.tokumx.TokuMXDataRestore;
+import org.exoplatform.services.jcr.util.tokumx.Utils;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
 import org.exoplatform.services.naming.InitialContextInitializer;
@@ -63,15 +62,12 @@ import org.picocontainer.Startable;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.zip.ZipInputStream;
 
 import javax.jcr.RepositoryException;
 import javax.naming.NamingException;
@@ -99,39 +95,6 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
          StatisticsWorkspaceStorageConnection.registerStatistics();
          LOG.info("The statistics of the component MXWorkspaceDataContainer has been enabled");
       }
-   }
-
-   /**
-    * The maximum possible batch size.
-    */
-   private final int MAXIMUM_BATCH_SIZE = 1000;
-
-   /**
-    *  Name of fetch size property parameter in configuration.
-    */
-   private static final String FULL_BACKUP_JOB_FETCH_SIZE = "exo.jcr.component.ext.FullBackupJob.fetch-size";
-
-   /**
-    * The number of rows that should be fetched from the database
-    */
-   private static final int FETCH_SIZE;
-   static
-   {
-      String size = PropertyManager.getProperty(FULL_BACKUP_JOB_FETCH_SIZE);
-      int value = 1000;
-      if (size != null)
-      {
-         try
-         {
-            value = Integer.valueOf(size);
-         }
-         catch (NumberFormatException e)
-         {
-            LOG.warn("The value of the property '" + FULL_BACKUP_JOB_FETCH_SIZE
-               + "' must be an integer, the default value will be used.");
-         }
-      }
-      FETCH_SIZE = value;
    }
 
    /**
@@ -581,60 +544,8 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
     */
    public void backup(final File storageDir) throws BackupException
    {
-      SecurityManager security = System.getSecurityManager();
-      if (security != null)
-      {
-         security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
-      }
-      DB db = getDB();
-      db.requestStart();
-      ObjectOutputStream oos = null;
-      DBCursor cursor = null;
       final File file = new File(storageDir, CONTENT_FILE);
-      try
-      {
-         db.requestEnsureConnection();
-         DBCollection collection = db.getCollection(collectionName);
-         cursor = collection.find().batchSize(FETCH_SIZE);
-         oos = new ObjectOutputStream(PrivilegedFileHelper.fileOutputStream(file));
-         while (cursor.hasNext())
-         {
-            DBObject o = cursor.next();
-            oos.writeBoolean(true);
-            oos.writeObject(o);
-         }
-         oos.writeBoolean(false);
-      }
-      catch (Exception e)
-      {
-         throw new BackupException(e);
-      }
-      finally
-      {
-         try
-         {
-            if (cursor != null)
-            {
-               cursor.close();
-            }
-         }
-         catch (Exception e)
-         {
-            LOG.warn("Could not close the cursor: " + e.getMessage());
-         }
-         try
-         {
-            if (oos != null)
-            {
-               oos.close();
-            }
-         }
-         catch (IOException e)
-         {
-            LOG.warn("Could not close the object output stream: " + e.getMessage());
-         }
-         db.requestDone();
-      }
+      Utils.backup(getDB(), collectionName, file);
       try
       {
          SecurityHelper.doPrivilegedExceptionAction(new PrivilegedExceptionAction<Void>()
@@ -651,6 +562,29 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
                {
                   for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
                   {
+                     ValueIOChannel channel = null;
+                     try
+                     {
+                        channel = valueStorageProvider.getChannel(valueStorage.getId());
+                        if (channel instanceof Backupable)
+                        {
+                           ((Backupable)channel).backup(storageDir);
+                           continue;
+                        }
+                     }
+                     catch (ValueStorageNotFoundException e)
+                     {
+                        // ignore me
+                     }
+                     catch(BackupException e)
+                     {
+                        throw new IOException("Could not backup the value storage " + valueStorage.getId(), e);
+                     }
+                     finally
+                     {
+                        if (channel != null)
+                           channel.close();
+                     }
                      File srcDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
 
                      if (!srcDir.exists())
@@ -684,31 +618,8 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
     */
    public void clean() throws BackupException
    {
-      SecurityManager security = System.getSecurityManager();
-      if (security != null)
-      {
-         security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
-      }
       LOG.info("Start to clean the data of the workspace '" + wsConfig.getName() + "'");
-      DB db = getDB();
-      db.requestStart();
-      try
-      {
-         db.requestEnsureConnection();
-         if (db.collectionExists(collectionName))
-         {
-            LOG.info("Drop the collection '" + collectionName + "'");
-            db.getCollection(collectionName).drop();
-         }
-      }
-      catch (Exception e)
-      {
-         throw new BackupException(e);
-      }
-      finally
-      {
-         db.requestDone();
-      }
+      Utils.clean(getDB(), collectionName);
       initDatabase();
       cleanVS();
    }
@@ -728,6 +639,29 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
                {
                   for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
                   {
+                     ValueIOChannel channel = null;
+                     try
+                     {
+                        channel = valueStorageProvider.getChannel(valueStorage.getId());
+                        if (channel instanceof Backupable)
+                        {
+                           ((Backupable)channel).clean();
+                           continue;
+                        }
+                     }
+                     catch (ValueStorageNotFoundException e)
+                     {
+                        // ignore me
+                     }
+                     catch(BackupException e)
+                     {
+                        throw new IOException("Could not clean the value storage " + valueStorage.getId(), e);
+                     }
+                     finally
+                     {
+                        if (channel != null)
+                           channel.close();
+                     }
                      File valueStorageDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
                      if (valueStorageDir.exists())
                      {
@@ -755,13 +689,34 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
       {
          File storageDir = (File)context.getObject(DataRestoreContext.STORAGE_DIR);
          List<DataRestore> restorers = new ArrayList<DataRestore>();
-         restorers.add(new MXDataRestore(storageDir));
+         restorers.add(new MXDataRestore(database, collectionName, storageDir));
          if (wsConfig.getContainer().getValueStorages() != null)
          {
+            for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
+            {
+               ValueIOChannel channel = null;
+               try
+               {
+                  channel = valueStorageProvider.getChannel(valueStorage.getId());
+                  if (channel instanceof Backupable)
+                  {
+                     restorers.add(((Backupable)channel).getDataRestorer(context));
+                  }
+               }
+               catch (ValueStorageNotFoundException e)
+               {
+                  // ignore me
+               }
+               catch(BackupException e)
+               {
+                  throw new IOException("Could not clean the value storage " + valueStorage.getId(), e);
+               }
+            }
+
             List<File> dataDirsList = initDataDirs();
             List<File> backupDirsList = initBackupDirs(storageDir);
-
-            restorers.add(new DirectoryRestore(dataDirsList, backupDirsList));
+            if (!dataDirsList.isEmpty())
+               restorers.add(new DirectoryRestore(dataDirsList, backupDirsList));
          }
 
          return new ComplexDataRestore(restorers);
@@ -778,6 +733,9 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
 
       for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
       {
+         String path = valueStorage.getParameterValue(FileValueStorage.PATH, null);
+         if (path == null)
+            continue;
          File zipFile = new File(storageDir, "values-" + valueStorage.getId() + ".zip");
          if (PrivilegedFileHelper.exists(zipFile))
          {
@@ -808,22 +766,21 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
 
       for (ValueStorageEntry valueStorage : wsConfig.getContainer().getValueStorages())
       {
-         File dataDir = new File(valueStorage.getParameterValue(FileValueStorage.PATH));
+         String path = valueStorage.getParameterValue(FileValueStorage.PATH, null);
+         if (path == null)
+            continue;
+         File dataDir = new File(path);
          dataDirsList.add(dataDir);
       }
 
       return dataDirsList;
    }
 
-   private class MXDataRestore implements DataRestore
+   private class MXDataRestore extends TokuMXDataRestore
    {
-      private final File storageDir;
-
-      public MXDataRestore(File storageDir)
+      public MXDataRestore(DB database, String collectionName, File storageDir)
       {
-         this.storageDir = storageDir;
-         database.requestStart();
-         database.requestEnsureConnection();
+         super(database, collectionName, CONTENT_ZIP_FILE, CONTENT_FILE, storageDir);
       }
 
       /**
@@ -831,93 +788,18 @@ public class MXWorkspaceDataContainer extends WorkspaceDataContainerBase impleme
        */
       public void clean() throws BackupException
       {
-         if (database.collectionExists(collectionName))
-         {
-            DBCollection collection = database.getCollection(collectionName);
-            LOG.info("Drop the collection '" + collectionName + "'");
-            collection.drop();
-         }
-         createCollection(database);
+         super.clean();
          LOG.info("Drop the VS of the workspace '" + wsConfig.getName() + "'");
          cleanVS();
       }
 
       /**
-       * {@inheritDoc}
+       * Executes an action after the restore
        */
-      public void restore() throws BackupException
+      protected void postRestore(DBCollection collection)
       {
-         SecurityManager security = System.getSecurityManager();
-         if (security != null)
-         {
-            security.checkPermission(JCRRuntimePermissions.MANAGE_REPOSITORY_PERMISSION);
-         }
-         ObjectInputStream ois = null;
-         try
-         {
-            DBCollection collection = database.getCollection(collectionName);
-
-            ZipInputStream zis = PrivilegedFileHelper.zipInputStream(new File(storageDir, CONTENT_ZIP_FILE));
-            while (!zis.getNextEntry().getName().endsWith(CONTENT_FILE));
-            ois = new ObjectInputStream(zis);
-            List<DBObject> objects = new ArrayList<DBObject>();
-            while (ois.readBoolean())
-            {
-               DBObject o = (DBObject)ois.readObject();
-               objects.add(o);
-               if (objects.size() >= MAXIMUM_BATCH_SIZE)
-               {
-                  collection.insert(objects);
-                  objects.clear();
-               }
-            }
-            if (!objects.isEmpty())
-               collection.insert(objects);
-            addIndexes(collection);
-            initCollection(collection);
-         }
-         catch (Exception e)
-         {
-            throw new BackupException(e);
-         }
-         finally
-         {
-            if (ois != null)
-            {
-               try
-               {
-                  ois.close();
-               }
-               catch (IOException e)
-               {
-                  LOG.warn("Could not close the object input stream: " + e.getMessage());
-               }
-            }
-         }
-      }
-
-      /**
-       * {@inheritDoc}
-       */
-      public void commit() throws BackupException
-      {
-         // We do nothing as we want to use the auto commit mode
-      }
-
-      /**
-       * {@inheritDoc}
-       */
-      public void rollback() throws BackupException
-      {
-         // We do nothing as we want to use the auto commit mode
-      }
-
-      /**
-       * {@inheritDoc}
-       */
-      public void close() throws BackupException
-      {
-         database.requestDone();
+         addIndexes(collection);
+         initCollection(collection);
       }
    }
 }
