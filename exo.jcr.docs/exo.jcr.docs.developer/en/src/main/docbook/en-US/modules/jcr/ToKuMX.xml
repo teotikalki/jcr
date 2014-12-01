@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This document was created with Syntext Serna Free. -->
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+   "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="JCR.ToKuMX">
+  <title>ToKuMX</title>
+
+  <para>eXo JCR provides the way to persist workspace data on NOSQL database as <ulink
+     url="http://www.tokutek.com/tokumx-for-mongodb/">ToKuMX </ulink>.
+     This article describes the required configuration.</para>
+
+  <section id="JCR.ToKuMX.WorkspaceDataContainer">
+    <title>JCR Workspace Data Container</title>
+   <para>To use TokuMX database as persistent storage, you should use MXWorkspaceDataContainer as DataContainer.
+      The type of container is described in the attribute class = org.exoplatform.services.jcr.impl.storage.tokumx.MXWorkspaceDataContainer. </para>
+     <para>See the following example:</para>
+   <programlisting language="xml">
+      &lt;container class="org.exoplatform.services.jcr.impl.storage.tokumx.MXWorkspaceDataContainer"&gt;
+   &lt;properties&gt;
+           &lt;property name="max-buffer-size" value="200k" /&gt;
+           &lt;property name="swap-directory" value="target/temp/swap/ws" /&gt;
+           &lt;property name="collection-name-suffix" value="db1ws" /&gt;
+           &lt;property name="use-sequence-for-order-number" value="${use-sequence}" /&gt;
+           &lt;property name="auto-commit" value="${auto-commit}" /&gt;
+           &lt;property name="connection-transactionsuri" value="${connection-uri}" /&gt;
+      ...
+   &lt;/properties&gt;</programlisting>
+
+   <para><emphasis role="bold">Workspace Data Container parameters:</emphasis></para>
+
+  <itemizedlist>
+    <listitem>
+      <para><emphasis role="bold">max-buffer-size</emphasis>: A threshold in
+      bytes, if a value size is greater, then it will be spooled to a
+      temporary file. Default value is 200k.</para>
+    </listitem>
+    <listitem>
+      <para><emphasis role="bold">swap-directory</emphasis>: A location where
+      the value will be spooled if no value storage is configured but a
+      max-buffer-size is exceeded. Default value is the value of
+      "java.io.tmpdir" system property.</para>
+    </listitem>
+    <listitem>transactions
+          <para><emphasis role="bold">collection-name-suffix</emphasis>: The suffix name of the collection
+             used to persist workspace data.</para>
+    </listitem>
+    <listitem>
+      <para><emphasis role="bold">use-sequence-for-order-number:</emphasis> Indicates whether or not a sequence must
+      be used to manage the order number. The value expected for this parameter is a boolean by default it is set to "TRUE".</para>
+    </listitem>
+    <listitem>
+          <para><emphasis role="bold">auto-commit</emphasis>: Enable autocommit mode for the current connection.
+          By default autocommit mode is disabled.</para>
+    </listitem>
+    <listitem>
+          <para><emphasis role="bold">connection-uri</emphasis>: The connection URI used to connect to ToKuMX database server. </para>
+    </listitem>
+  </itemizedlist>
+
+
+     
+  </section>
+   <section id="JCR.ToKuMX.GridFSValueStorage">
+    <title>GridFS Value Storage</title>
+    <para>Instead of storing a file in a single document, <ulink url="http://docs.mongodb.org/manual/core/gridfs/">GridFS </ulink>
+       divides a file into parts or chunks, and stores each of those chunks as a separate document. </para>
+    <para>GridFS stores files in two collections:</para>
+     <itemizedlist>
+        <listitem>chunks stores the binary chunks. For details.</listitem>
+        <listitem>files stores the file’s metadata. For details. </listitem>
+     </itemizedlist>
+    <para>To enable GridFS Value Storage, just configure it in JCR Repositories configuration as we do for other Value Storage.</para>
+    <para>See the following example:</para>
+    <programlisting language="xml">
+                  &lt;value-storages&gt;
+                     &lt;value-storage id="ws" class="org.exoplatform.services.jcr.impl.storage.value.gfs.GridFSValueStorage"&gt;
+                        &lt;properties&gt;
+                           &lt;property name="connection-uri" value="${connection-uri}" /&gt;
+                           &lt;property name="enabled" value="${value-storage-enabled}" /&gt;
+                        &lt;/properties&gt;
+                        &lt;filters&gt;
+                           &lt;filter property-type="Binary" /&gt;
+                        &lt;/filters&gt;
+                     &lt;/value-storage&gt;
+                  &lt;/value-storages&gt;
+</programlisting>
+      <itemizedlist>
+          <listitem>
+          <para><emphasis role="bold">connection-uri</emphasis>: The connection URI used to connect to ToKuMX database server. </para>
+    </listitem>
+    <listitem>
+          <para><emphasis role="bold">value-storage-enabled</emphasis>: Value storage enabling parameter. </para>
+    </listitem>
+  </itemizedlist>
+  </section>
+  <section id="JCR.ToKuMX.CacheableLockManagerImpl">
+    <title>LockManager configuration</title>
+     <para>ISPNCacheableLockManagerImpl stores Lock objects in Infinispan, Also, Infinispan has a TokuMXCacheStore,
+        so Locks will be stored to the ToKuMX database.You can enable LockManager by adding lock-manager-configuration to workspace-configuration.</para>
+     <programlisting language="xml">
+               &lt;lock-manager class="org.exoplatform.services.jcr.impl.core.lock.tokumx.ISPNCacheableLockManagerImpl"&gt;
+                  &lt;properties&gt;
+                     &lt;property name="time-out" value="15m" /&gt;
+                     &lt;property name="infinispan-configuration" value="conf/standalone/test-infinispan-lock.xml" /&gt;
+                     &lt;property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}" /&gt;
+                     &lt;property name="infinispan-cl-cache.mongodb.auto.commit" value="${auto-commit}" /&gt;
+                     &lt;property name="infinispan-cl-cache.mongodb.collection.name" value="db1ws" /&gt;
+                  &lt;/properties&gt;
+               &lt;/lock-manager&gt;
+     </programlisting>
+    <itemizedlist>
+          <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.connection.uri</emphasis>: The connection URI used to connect to ToKuMX database server. </para>
+    </listitem>
+    <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.auto.commit</emphasis>: Enable autocommit mode for the current connection.
+          By default autocommit mode is disabled.</para>
+    </listitem>
+                  <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.collection.name</emphasis>: The collection name.</para>
+    </listitem>
+                                <listitem>
+          <para><emphasis role="bold">infinispan-configuration</emphasis>: defines path to template based configuration
+             for Infinispan Cache instance.</para>
+    </listitem>
+  </itemizedlist>
+       <section id="JCR.ToKuMX.CacheableLockManagerImpl.LockTemplate">
+    <title>Lock template configuration</title>
+          <para>The template Infinispan configuration to use for all LockManagers.</para>
+          <programlisting language="xml">
+             &lt;infinispan
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:5.2 http://www.infinispan.org/schemas/infinispan-config-5.2.xsd"
+      xmlns="urn:infinispan:config:5.2"&gt;
+
+    &lt;global&gt;
+      &lt;globalJmxStatistics jmxDomain="exo" enabled="true" allowDuplicateDomains="true"/&gt;
+    &lt;/global&gt;
+
+    &lt;default&gt;
+      &lt;locking isolationLevel="READ_COMMITTED" lockAcquisitionTimeout="20000" writeSkewCheck="false" concurrencyLevel="500" useLockStriping="false"/&gt;
+      &lt;transaction transactionManagerLookupClass="org.exoplatform.services.transaction.infinispan.JBossStandaloneJTAManagerLookup" syncRollbackPhase="true" syncCommitPhase="true" transactionMode="TRANSACTIONAL"/&gt;
+      &lt;jmxStatistics enabled="true"/&gt;eXo JCR can rely storage persistence on NOSQL database as ToKuMX
+
+      &lt;loaders passivation="false" shared="true" preload="true"&gt;
+        &lt;store class="org.exoplatform.services.jcr.tokumx.TokuMXCacheStore" fetchPersistentState="true" ignoreModifications="false" purgeOnStartup="false"&gt;
+          &lt;properties&gt;
+             &lt;property name="connectionURI" value="${infinispan-cl-cache.mongodb.connection.uri}"/&gt;
+             &lt;property name="collectionName" value="${infinispan-cl-cache.mongodb.collection.name}"/&gt;
+          &lt;/properties&gt;
+          &lt;async enabled="false"/&gt;
+        &lt;/store&gt;
+      &lt;/loaders&gt;
+   &lt;/default&gt;
+
+&lt;/infinispan&gt;
+             </programlisting>
+          <para> All configurable parameters are filled by templates and will be replaced by LockManagers configuration parameters:</para>
+                    <itemizedlist>
+          <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.connection.uri</emphasis>: The connection URI used to connect to ToKuMX database server. </para>
+    </listitem>
+                  <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.collection.name</emphasis>: The collection name.</para>
+    </listitem>
+  </itemizedlist>
+          </section>
+  </section>
+  <section id="JCR.ToKuMX.QuotaManager">
+    <title>Quota Manager configuration</title>
+     <para>To use Quota Manager along with Infinispan you need to configure it. An example of the configuration:</para>
+     <programlisting language="xml">
+          &lt;component&gt;
+    &lt;key&gt;org.exoplatform.services.jcr.impl.quota.QuotaManager&lt;/key&gt;
+    &lt;type&gt;org.exoplatform.services.jcr.impl.quota.tokumx.ISPNQuotaManagerImpl&lt;/type&gt;
+    &lt;init-params&gt;
+      &lt;value-param&gt;
+        &lt;name&gt;exceeded-quota-behaviour&lt;/name&gt;
+        &lt;value&gt;exception&lt;/value&gt;
+      &lt;/value-param&gt;
+      &lt;properties-param&gt;
+        &lt;name&gt;cache-configuration&lt;/name&gt;
+        &lt;description&gt;infinispan-configuration&lt;/description&gt;
+        &lt;property name="infinispan-cl-cache.mongodb.connection.uri" value="${connection-uri}"/&gt;
+        &lt;property name="infinispan-configuration" value="conf/standalone/test-infinispan-quota.xml" /&gt;
+      &lt;/properties-param&gt;
+    &lt;/init-params&gt;
+  &lt;/component&gt;
+     </programlisting>
+           <itemizedlist>
+          <listitem>
+          <para><emphasis role="bold">infinispan-cl-cache.mongodb.connection.uri</emphasis>: The connection URI used to connect to ToKuMX database server. </para>
+    </listitem>
+                                <listitem>
+          <para><emphasis role="bold">infinispan-configuration</emphasis>: defines path to template based configuration
+             for Infinispan Cache instance.</para>
+    </listitem>
+  </itemizedlist>
+  </section>
+  <section id="JCR.ToKuMX.Migration">
+    <title>Migrate JCR from RDBMS to ToKuMX</title>
+  </section>
+  <section id="JCR.ToKuMX.Install">
+    <title>Install requirements</title>
+     <para>The data container uses the mongo-java-driver to communicate with the ToKuMX database.
+     Currently the data container is tested with the following configuration: </para>
+     <itemizedlist>
+        <listitem>ToKuMX 1.4 : Driver version 2.11.4</listitem>
+     </itemizedlist>
+     <para>You can download the driver from this <ulink url="http://central.maven.org/maven2/org/mongodb/mongo-java-driver">link </ulink>.</para>
+  </section>
+</section>
