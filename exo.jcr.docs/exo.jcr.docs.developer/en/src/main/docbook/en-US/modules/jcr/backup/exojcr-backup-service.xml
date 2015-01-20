@@ -241,7 +241,7 @@
           <para><emphasis role="bold">full-backup-type</emphasis> : The FQN of
           the full backup job class; Must implement
           org.exoplatform.services.jcr.ext.backup.BackupJob. By default :
-          org.exoplatform.services.jcr.ext.backup.impl.rdbms.FullBackupJob
+          org.exoplatform.services.jcr.ext.backup.impl.FullBackupJob
           used. Please, notice that file-system based implementation
           org.exoplatform.services.jcr.ext.backup.impl.fs.FullBackupJob is
           deprecated and not recommended for use.</para>

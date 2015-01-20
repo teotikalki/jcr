@@ -53,7 +53,7 @@
 
     <para>If you want to enable the statistics, you just need to set the JVM
     parameter called
-    <emphasis>JDBCWorkspaceDataContainer.statistics.enabled</emphasis> to
+    <emphasis>WorkspaceDataContainer.statistics.enabled</emphasis> to
     <emphasis>true</emphasis>. The corresponding CSV file is
     <emphasis>StatisticsJDBCStorageConnection-${creation-timestamp}.csv</emphasis>
     for more details about how the csv files are managed, please refer to the

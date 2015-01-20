@@ -181,6 +181,6 @@
               xmlns:xi="http://www.w3.org/2001/XInclude" />
 
    <!-- tuning guide -->
-  <xi:include href="jcr/ToKuMX.xml"
+  <xi:include href="jcr/TokuMX.xml"
                xmlns:xi="http://www.w3.org/2001/XInclude" />
 </chapter>
