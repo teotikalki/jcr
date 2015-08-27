@@ -47,8 +47,8 @@ public class VersionHistoryUtils {
 
   public static final String NT_FILE          = "nt:file";
   public static final String MIX_VERSIONABLE  = "mix:versionable";
-  private static String maxAllowVersionProp   = "ecms.documents.versions.max";
-  private static String expirationTimeProp    = "ecms.documents.versions.expiration";
+  private static String maxAllowVersionProp   = "jcr.documents.versions.max";
+  private static String expirationTimeProp    = "jcr.documents.versions.expiration";
 
   private static int maxAllowVersion;
   private static long maxLiveTime;
