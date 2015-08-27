@@ -83,6 +83,7 @@ public class VersionHistoryUtils {
         nodeVersioning.addMixin(MIX_VERSIONABLE);
         nodeVersioning.save();
       }
+      return;
     }
     nodeVersioning.checkin();
     nodeVersioning.checkout();
