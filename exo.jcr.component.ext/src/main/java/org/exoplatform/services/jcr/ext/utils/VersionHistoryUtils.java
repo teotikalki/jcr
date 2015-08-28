@@ -57,7 +57,7 @@ public class VersionHistoryUtils {
     try {
       maxAllowVersion = Integer.parseInt(System.getProperty(maxAllowVersionProp));
       maxLiveTime = Integer.parseInt(System.getProperty(expirationTimeProp));
-    }catch(Exception ex){
+    }catch(NumberFormatException nex){
       maxAllowVersion = DOCUMENT_AUTO_DEFAULT_VERSION_MAX;
       maxLiveTime = DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED;
     }
@@ -73,7 +73,7 @@ public class VersionHistoryUtils {
 
     if(!nodeVersioning.isNodeType(NT_FILE)) {
       if(log.isDebugEnabled()){
-        log.info("Version history is not impact with non-nt:file documents, there'is not any version created.");
+        log.debug("Version history is not impact with non-nt:file documents, there'is not any version created.");
       }
       return;
     }
