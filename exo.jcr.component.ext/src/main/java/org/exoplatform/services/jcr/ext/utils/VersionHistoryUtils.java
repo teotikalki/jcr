@@ -85,8 +85,16 @@ public class VersionHistoryUtils {
       }
       return;
     }
-    nodeVersioning.checkin();
-    nodeVersioning.checkout();
+     if (!nodeVersioning.isCheckedOut())
+     {
+        nodeVersioning.checkout();
+     }
+     else
+     {
+        nodeVersioning.checkin();
+        nodeVersioning.checkout();
+     }
+
     if(maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX) {
       removeRedundant(nodeVersioning);
     }
