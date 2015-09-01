@@ -18,6 +18,9 @@
  */
 package org.exoplatform.services.jcr.ext.utils;
 
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
+
 import javax.jcr.Node;
 import javax.jcr.version.Version;
 import javax.jcr.version.VersionHistory;
@@ -28,9 +31,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.services.log.Log;
 /**
  * Created by The eXo Platform SEA
  * Author : eXoPlatform
@@ -128,11 +128,10 @@ public class VersionHistoryUtils {
         lstVersionTime.add(String.valueOf(version.getCreated().getTimeInMillis()));
       }
     }
-
-    if (maxAllowVersion < lstVersionTime.size()) {
+    if (maxAllowVersion <= lstVersionTime.size()) {
       Collections.sort(lstVersionTime);
       String[] lsts = lstVersionTime.toArray(new String[lstVersionTime.size()]);
-      for (int j = maxAllowVersion-1; j < lsts.length; j++) {
+      for (int j = 0; j <= lsts.length - maxAllowVersion; j++) {
         versionHistory.removeVersion(lstVersions.get(lsts[j]));
       }
     }
