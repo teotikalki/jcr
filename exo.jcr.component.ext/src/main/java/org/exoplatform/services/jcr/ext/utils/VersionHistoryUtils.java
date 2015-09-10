@@ -57,6 +57,9 @@ public class VersionHistoryUtils {
     try {
       maxAllowVersion = Integer.parseInt(System.getProperty(maxAllowVersionProp));
       maxLiveTime = Integer.parseInt(System.getProperty(expirationTimeProp));
+      //ignore invalid input config
+      if(maxAllowVersion < 0) maxAllowVersion = DOCUMENT_AUTO_DEFAULT_VERSION_MAX;
+      if(maxLiveTime < 0) maxLiveTime = DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED;
     }catch(NumberFormatException nex){
       maxAllowVersion = DOCUMENT_AUTO_DEFAULT_VERSION_MAX;
       maxLiveTime = DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED;
