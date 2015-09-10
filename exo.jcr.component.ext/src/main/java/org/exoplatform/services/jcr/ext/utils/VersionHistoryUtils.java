@@ -95,7 +95,7 @@ public class VersionHistoryUtils {
         nodeVersioning.checkout();
      }
 
-    if(maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX) {
+    if(maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX || maxLiveTime != DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED) {
       removeRedundant(nodeVersioning);
     }
     nodeVersioning.save();
@@ -128,7 +128,7 @@ public class VersionHistoryUtils {
         lstVersionTime.add(String.valueOf(version.getCreated().getTimeInMillis()));
       }
     }
-    if (maxAllowVersion <= lstVersionTime.size()) {
+    if (maxAllowVersion <= lstVersionTime.size() && maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX) {
       Collections.sort(lstVersionTime);
       String[] lsts = lstVersionTime.toArray(new String[lstVersionTime.size()]);
       for (int j = 0; j <= lsts.length - maxAllowVersion; j++) {
