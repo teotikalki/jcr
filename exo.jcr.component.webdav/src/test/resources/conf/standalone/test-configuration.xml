@@ -211,7 +211,7 @@
 
           <value-param>
             <name>allowed.folder.auto-version</name>
-            <value>workspace1:folder1;workspace1:folder2;workspace2:folder3</value>
+            <value>workspace1:path1;workspace1:path2;workspace2:path3</value>
          </value-param>
 
          <value-param>
