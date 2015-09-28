@@ -18,6 +18,9 @@
  */
 package org.exoplatform.services.jcr.ext.utils;
 
+import org.exoplatform.services.log.ExoLogger;
+import org.exoplatform.services.log.Log;
+
 import javax.jcr.Node;
 import javax.jcr.version.Version;
 import javax.jcr.version.VersionHistory;
@@ -28,9 +31,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.exoplatform.services.log.ExoLogger;
-import org.exoplatform.services.log.Log;
 /**
  * Created by The eXo Platform SEA
  * Author : eXoPlatform
@@ -57,6 +57,9 @@ public class VersionHistoryUtils {
     try {
       maxAllowVersion = Integer.parseInt(System.getProperty(maxAllowVersionProp));
       maxLiveTime = Integer.parseInt(System.getProperty(expirationTimeProp));
+      //ignore invalid input config
+      if(maxAllowVersion < 0) maxAllowVersion = DOCUMENT_AUTO_DEFAULT_VERSION_MAX;
+      if(maxLiveTime < 0) maxLiveTime = DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED;
     }catch(NumberFormatException nex){
       maxAllowVersion = DOCUMENT_AUTO_DEFAULT_VERSION_MAX;
       maxLiveTime = DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED;
@@ -95,7 +98,7 @@ public class VersionHistoryUtils {
         nodeVersioning.checkout();
      }
 
-    if(maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX) {
+    if(maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX || maxLiveTime != DOCUMENT_AUTO_DEFAULT_VERSION_EXPIRED) {
       removeRedundant(nodeVersioning);
     }
     nodeVersioning.save();
@@ -128,11 +131,10 @@ public class VersionHistoryUtils {
         lstVersionTime.add(String.valueOf(version.getCreated().getTimeInMillis()));
       }
     }
-
-    if (maxAllowVersion < lstVersionTime.size()) {
+    if (maxAllowVersion <= lstVersionTime.size() && maxAllowVersion!= DOCUMENT_AUTO_DEFAULT_VERSION_MAX) {
       Collections.sort(lstVersionTime);
       String[] lsts = lstVersionTime.toArray(new String[lstVersionTime.size()]);
-      for (int j = maxAllowVersion-1; j < lsts.length; j++) {
+      for (int j = 0; j <= lsts.length - maxAllowVersion; j++) {
         versionHistory.removeVersion(lstVersions.get(lsts[j]));
       }
     }
