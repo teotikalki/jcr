@@ -411,6 +411,12 @@ public class PutCommand
       }
 
       List<String> paths = allowedAutoVersionPath.get(workspaceName);
+
+      if (paths == null)
+      {
+         return false;
+      }
+
       for (String p : paths)
       {
          if (!StringUtils.isEmpty(p) && nodePath.startsWith(p))
