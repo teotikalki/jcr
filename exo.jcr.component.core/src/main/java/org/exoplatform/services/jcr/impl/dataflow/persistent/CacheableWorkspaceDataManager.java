@@ -82,6 +82,7 @@ import javax.jcr.InvalidItemStateException;
 import javax.jcr.RepositoryException;
 import javax.transaction.Status;
 import javax.transaction.TransactionManager;
+import org.exoplatform.commons.utils.PrivilegedFileHelper;
 
 /**
  * Created by The eXo Platform SAS. 
@@ -1354,8 +1355,7 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
    {
 
       List<NodeData> childNodes = null;
-      if (!forcePersistentRead && cache.isEnabled())
-      {
+      if (!forcePersistentRead && cache.isEnabled()) {
          childNodes = cache.getChildNodes(nodeData);
          if (childNodes != null)
          {
@@ -1382,8 +1382,7 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
             public List<NodeData> run() throws RepositoryException
             {
                List<NodeData> childNodes = CacheableWorkspaceDataManager.super.getChildNodesData(nodeData);
-               if (cache.isEnabled())
-               {
+               if (cache.isEnabled()) {
                   cache.addChildNodes(nodeData, childNodes);
                }
 
@@ -2002,8 +2001,7 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
     *           error
     */
    protected ItemData getPersistedItemData(NodeData parentData, QPathEntry name, ItemType itemType,
-      boolean createNullItemData) throws RepositoryException
-   {
+      boolean createNullItemData) throws RepositoryException {
       ItemData data = super.getItemData(parentData, name, itemType);
       if (cache.isEnabled())
       {
@@ -2520,8 +2518,7 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
     * @param search the ACL search describing what we are looking for
     * @return NodeData, data by identifier
     */
-   private NodeData getACL(String identifier, ACLSearch search) throws RepositoryException
-   {
+   private NodeData getACL(String identifier, ACLSearch search) throws RepositoryException {
       final ItemData item = getItemData(identifier, false);
       return item != null && item.isNode() ? initACL(null, (NodeData)item, search) : null;
    }
@@ -2763,6 +2760,10 @@ public class CacheableWorkspaceDataManager extends WorkspacePersistentDataManage
             {
                return true;
             }
+            else if (!PrivilegedFileHelper.exists(fpvd.getFile()))// check if file exist
+                           {
+                                      return true;
+                        }
          }
       }
       return false;

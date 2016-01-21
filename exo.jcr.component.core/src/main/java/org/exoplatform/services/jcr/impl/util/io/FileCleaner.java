@@ -30,7 +30,7 @@ import java.security.PrivilegedAction;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
+import java.lang.ref.WeakReference;
 /**
  * Created by The eXo Platform SAS.
  * 
@@ -54,7 +54,11 @@ public class FileCleaner extends WorkerThread
       @Override
       public void run()
       {
-         File file = null;
+         File file;
+                  for(WeakReference<SwapFile> swapFileRef : SwapFile.CURRENT_SWAP_FILES.values())
+                 {
+                             addFile(swapFileRef.get().getAbsoluteFile());
+                  }
          while ((file = files.poll()) != null)
          {
             PrivilegedFileHelper.delete(file);

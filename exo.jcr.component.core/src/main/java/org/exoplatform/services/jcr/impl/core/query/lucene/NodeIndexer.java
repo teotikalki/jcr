@@ -54,7 +54,10 @@ import java.util.List;
 import javax.jcr.NamespaceException;
 import javax.jcr.PropertyType;
 import javax.jcr.RepositoryException;
-
+import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
+import org.exoplatform.services.jcr.impl.dataflow.persistent.CleanableFilePersistedValueData;
+import org.exoplatform.services.jcr.impl.util.io.SwapFile;
+import java.io.File;
 /**
  * Creates a lucene <code>Document</code> object from a {@link javax.jcr.Node}.
  */
@@ -294,8 +297,7 @@ public class NodeIndexer
     * Adds a value to the lucene Document.
     *
     * @param doc   the document.
-    * @param value the internal  value.
-    * @param name  the name of the property.
+    @param prop the property data
     */
    private void addValues(final Document doc, final PropertyData prop) throws RepositoryException
    {
@@ -374,17 +376,39 @@ public class NodeIndexer
                         // statement
 
                         InputStream is = null;
-                        is = pvd.getAsStream();
-                        Reader reader;
-                        if (encoding != null)
+                        try
                         {
-                           reader = ((AdvancedDocumentReader)dreader).getContentAsReader(is, encoding);
+                           is = pvd.getAsStream();
+                                                      Reader reader;
+                                                      if (encoding != null)
+                                                      {
+                                                                reader = ((AdvancedDocumentReader)dreader).getContentAsReader(is, encoding);
+                                                      }
+                                                      else
+                                                      {
+                                                                 reader = ((AdvancedDocumentReader)dreader).getContentAsReader(is);
+                                                     }
+                                                     doc.add(createFulltextField(reader));
                         }
-                        else
+                        finally
                         {
-                           reader = ((AdvancedDocumentReader)dreader).getContentAsReader(is);
+                           try
+                                                     {
+                                                                if (SpoolConfig.maxSwapSize > 0 && pvd instanceof CleanableFilePersistedValueData)
+                                                         {
+                                                                    File file = ((CleanableFilePersistedValueData)pvd).getFile();
+                                                           ((SwapFile)file).finalize();
+                                                        }
+                                                     }
+                                                      catch (Throwable e) //NOSONAR
+                                                      {
+                                                                 if (LOG.isTraceEnabled())
+                                                         {
+                                                                   LOG.trace("An exception occurred: " + e.getMessage());
+                                                         }
+                                                     }
                         }
-                        doc.add(createFulltextField(reader));
+
                      }
                   }
                   else
@@ -412,6 +436,11 @@ public class NodeIndexer
                            try
                            {
                               is.close();
+                              if (SpoolConfig.maxSwapSize > 0 && pvd instanceof CleanableFilePersistedValueData)
+                                                               {
+                                                                          File file = ((CleanableFilePersistedValueData)pvd).getFile();
+                                                              ((SwapFile)file).finalize();
+                                                            }
                            }
                            catch (Throwable e) //NOSONAR
                            {
@@ -729,7 +758,7 @@ public class NodeIndexer
     *
     * @param doc           The document to which to add the field
     * @param fieldName     The name of the field to add
-    * @param internalValue The value for the field to add to the document.
+    * @param pathString     The path on filed to add.
     */
    protected void addPathValue(Document doc, String fieldName, Object pathString)
    {
@@ -993,7 +1022,6 @@ public class NodeIndexer
     *
     * @param doc      the document.
     * @param parentId the id of the parent node.
-    * @throws ItemStateException  if the parent node cannot be read.
     * @throws RepositoryException if the parent node does not have a child node
     *                             entry for the current node.
     */
