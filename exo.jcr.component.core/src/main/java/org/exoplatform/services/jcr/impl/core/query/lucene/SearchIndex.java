@@ -73,6 +73,7 @@ import org.exoplatform.services.jcr.impl.core.query.QueryHandlerContext;
 import org.exoplatform.services.jcr.impl.core.query.SearchIndexConfigurationHelper;
 import org.exoplatform.services.jcr.impl.core.query.lucene.directory.DirectoryManager;
 import org.exoplatform.services.jcr.impl.core.query.lucene.directory.FSDirectoryManager;
+import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
 import org.exoplatform.services.jcr.statistics.JCRStatisticsManager;
@@ -81,7 +82,6 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -107,7 +107,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import javax.jcr.RepositoryException;
 import javax.jcr.query.InvalidQueryException;
 import javax.xml.parsers.DocumentBuilder;
@@ -605,7 +604,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
 
    /**
     * Working constructor.
-    * 
+    *
     * @throws RepositoryConfigurationException
     * @throws IOException
     */
@@ -1022,6 +1021,11 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
       if (doReindexing || doForceReindexing)
       {
          index.createInitialIndex(itemStateManager, doForceReindexing);
+         if(SpoolConfig.forceClean)
+         {
+            //force clean swap directory after re-index workspace
+            cleanupSwapDirectory();
+         }
       }
       if (doCheck)
       {
@@ -1052,6 +1056,36 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
             log.warn("Failed to run consistency check on index: " + e);
          }
       }
+   }
+
+   /**
+    * Deletes all the files from the swap directory
+    */
+   private void cleanupSwapDirectory()
+   {
+      PrivilegedAction<Void> action = new PrivilegedAction<Void>()
+      {
+         public Void run()
+         {
+            String WorkspaceName = getContext().getContainer().getWorkspaceName();
+            File directory = SpoolConfig.getSwapPath(WorkspaceName);
+            if(directory != null)
+            {
+               File[] files = directory.listFiles();
+               if (files != null && files.length > 0)
+               {
+                  log.info("Force delete swap files after re-index " + WorkspaceName);
+                  for (int i = 0; i < files.length; i++)
+                  {
+                     File file = files[i];
+                     file.delete();
+                  }
+               }
+            }
+            return null;
+         }
+      };
+      SecurityHelper.doPrivilegedAction(action);
    }
 
    void ensureFlushed() throws IOException
@@ -3412,9 +3446,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    }
 
    /**
-    * @see org.exoplatform.services.jcr.impl.core.query.QueryHandler#executeQuery(org.apache.lucene.search.Query,
-    *      boolean, org.exoplatform.services.jcr.datamodel.InternalQName[],
-    *      boolean[])
+    * @see org.exoplatform.services.jcr.impl.core.query.QueryHandler#executeQuery(org.apache.lucene.search.Query)
     */
    public QueryHits executeQuery(Query query) throws IOException
    {
@@ -3471,7 +3503,7 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
    }
 
    /**
-    * @see org.exoplatform.services.jcr.impl.core.query.QueryHandler#setOnline(boolean, boolean)
+    * @see org.exoplatform.services.jcr.impl.core.query.QueryHandler#setOnline(boolean, boolean, boolean)
     */
    public void setOnline(boolean isOnline, boolean allowQuery, boolean dropStaleIndexes) throws IOException
    {
