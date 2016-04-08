@@ -52,6 +52,11 @@ public final class JcrStandartAnalyzer extends Analyzer
    });
 
    /**
+    * Flag indicating whether analyzer is configured or none
+    */
+   private boolean configuredAnalyser;
+
+   /**
     * The indexing configuration.
     */
    private IndexingConfiguration indexingConfig;
@@ -70,6 +75,17 @@ public final class JcrStandartAnalyzer extends Analyzer
    protected void setDefaultAnalyzer(Analyzer analyzer)
    {
       defaultAnalyzer = analyzer;
+      configuredAnalyser = true;
+   }
+
+   /**
+    * Returns the current value for configuredAnalyser.
+    *
+    * @return the current value for configuredAnalyser.
+    */
+   public boolean isConfiguredAnalyser()
+   {
+      return configuredAnalyser;
    }
 
    /**

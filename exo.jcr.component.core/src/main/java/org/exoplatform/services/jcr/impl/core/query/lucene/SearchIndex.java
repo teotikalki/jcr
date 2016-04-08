@@ -3296,6 +3296,17 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
       this.asyncReindexing = asyncReindexing;
    }
 
+   /**
+    * Returns the current value for configuredAnalyser.
+    *
+    * @return the current value for configuredAnalyser.
+    */
+   public boolean hasConfiguredAnalyser()
+   {
+      return analyzer.isConfiguredAnalyser();
+   }
+
+
    // ----------------------------< internal
    // >----------------------------------
 
