@@ -37,13 +37,6 @@ public class TestNodeRemoveMixin extends BaseUsecasesTest
       Node rootNode = session.getRootNode();
       Node testNode = rootNode.addNode("testMixinNode", "exo:myType");
 
-      Node testNode1 = rootNode.addNode("testMixinNode1", "exo:JCR-2442");
-      testNode1.addMixin("mix:versionable");
-      session.save();
-
-      testNode1.removeMixin("mix:versionable");
-      session.save();
-
       // Add mixin to Node
       testNode.addMixin("mix:versionable");
       testNode.addMixin("exo:archiveable");
