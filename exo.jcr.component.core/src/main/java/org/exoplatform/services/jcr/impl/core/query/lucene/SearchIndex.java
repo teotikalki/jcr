@@ -76,6 +76,7 @@ import org.exoplatform.services.jcr.impl.core.query.lucene.directory.FSDirectory
 import org.exoplatform.services.jcr.impl.dataflow.SpoolConfig;
 import org.exoplatform.services.jcr.impl.storage.jdbc.JDBCWorkspaceDataContainer;
 import org.exoplatform.services.jcr.impl.storage.jdbc.statistics.StatisticsJDBCStorageConnection;
+import org.exoplatform.services.jcr.impl.util.io.SwapFile;
 import org.exoplatform.services.jcr.statistics.JCRStatisticsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1078,7 +1079,21 @@ public class SearchIndex extends AbstractQueryHandler implements IndexerIoModeLi
                   for (int i = 0; i < files.length; i++)
                   {
                      File file = files[i];
-                     file.delete();
+                     try
+                     {
+                        SwapFile swap = SwapFile.get(directory, file.getName());
+                        if(swap != null)
+                        {
+                           swap.delete();
+                        }
+                     }
+                     catch (IOException e)
+                     {
+                        if(log.isDebugEnabled())
+                        {
+                           log.warn("unable to delete swap files after re-index " + WorkspaceName);
+                        }
+                     }
                   }
                }
             }
